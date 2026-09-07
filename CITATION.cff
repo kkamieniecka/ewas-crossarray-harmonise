@@ -4,15 +4,12 @@ title: >-
   region detection for longitudinal EWAS
 message: If you use this software, please cite it using these metadata.
 type: software
-# EDIT BEFORE FIRST RELEASE -------------------------------------------------
-# Replace the author block with the real author list. ORCID lines are
-# optional; delete any you do not have.
 authors:
-  - family-names: FAMILY-NAME
-    given-names: GIVEN-NAME
-    affiliation: AFFILIATION
+  - family-names: Kamieniecka
+    given-names: Katarzyna
+    # Add before the first tagged release, if you want them cited:
+    # affiliation: AFFILIATION
     # orcid: 'https://orcid.org/0000-0000-0000-0000'
-# ---------------------------------------------------------------------------
 repository-code: 'https://github.com/kkamieniecka/ewas-crossarray-harmonise'
 license: MIT
 version: 0.1.0
