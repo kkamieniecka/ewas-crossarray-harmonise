@@ -1,0 +1,1 @@
+{"n_probes":422898,"n_samples":126,"design_formula":"~ expo + smoking_score + cd8t + cd4t + bcell + gran + mono + nk ","design_rank":9,"design_cols":9,"n_clusters":220883,"n_regions":214,"n_regions_fwer05":0,"cross_array_r":0.380489,"cross_array_sign_concordance":0.672897,"n_blocks":4,"n_perm":200,"runtime_s":337.991262}

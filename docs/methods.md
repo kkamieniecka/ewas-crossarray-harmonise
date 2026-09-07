@@ -1,0 +1,190 @@
+# Methods
+
+Written to be usable as a manuscript methods section. Notation is shared
+across sections: subjects $i = 1,\dots,n$, visits $j = 1,\dots,m_i$, probes
+$p = 1,\dots,P$ at genomic positions $x_p$. $M_{pij}$ is the M-value
+$\log_2\!\big(\beta/(1-\beta)\big)$ of probe $p$ in subject $i$ at visit $j$,
+and $t_{ij}$ the exposure (days on drug, scaled by `--exposure-scale`).
+
+## 1. Harmonisation
+
+IDATs are read per array type and **kept in their native probe space through
+QC**, because detection p-values, control-probe metrics and predicted sex are
+manifest-dependent and are not comparable across an intersected panel.
+
+Per array type: detection p-values against the negative-control distribution;
+a sample fails if its mean detection p exceeds the QC bound or predicted sex
+disagrees with recorded sex; a probe fails if its detection p exceeds `--detp`
+in more than `--detp_frac` of samples. Quantile normalisation is applied
+within array type.
+
+The two normalised objects are merged with `minfi::combineArrays()`, which
+intersects on CpG name — the only valid key, since every `AddressA_ID` differs
+between manifests while probe sequence, design type, colour channel and hg19
+position are identical for all 454,181 shared probes. Sex-chromosome probes
+are dropped (`--drop_sex`), as are probes within a SNP of the interrogated
+site (`dropLociWithSnps`). BMIQ is **not** applied by default: no shared probe
+changes Infinium design type between arrays, so harmonisation introduces no
+type-I/II imbalance to correct.
+
+Outputs are a `GenomicRatioSet` and a raw `float64` M-value matrix; the latter
+lets the numerical stages run without an R dependency.
+
+## 2. Probe-level repeated-measures model
+
+For each probe, with $s_i$ a subject intercept and $z_{ij}$ time-varying
+covariates,
+
+$$M_{pij} = \mu_p + s_{pi} + \beta_p\, t_{ij} + \gamma_p^{\!\top} z_{ij} + \varepsilon_{pij}.$$
+
+Because each subject lies entirely within one array type, cohort and chip,
+$s_{pi}$ absorbs all three exactly, and $\beta_p$ is identified from
+within-subject change only. Covariates must be time-varying: subject-constant
+terms are annihilated by the within transform (asserted in the test suite).
+
+Fitting is by least squares on the within-subject-centred design with
+subject-clustered variance, giving $\hat\beta_p$ and $\mathrm{se}(\hat\beta_p)$.
+Variances are moderated across probes by an empirical-Bayes shrinkage of the
+residual variance toward its prior, which stabilises $z_p =
+\hat\beta_p/\mathrm{se}(\hat\beta_p)$ at the low degrees of freedom typical of
+a longitudinal cohort. Probe-level p-values are FDR-controlled
+(Benjamini–Hochberg).
+
+The same model is fitted **separately within each array cohort** to give the
+per-array effects used for cross-array generalisation (§5), and residuals are
+retained for the co-methylation clustering in §3 and §4.
+
+## 3. Co-methylation clustering
+
+Legacy clustering joins probes on genomic distance alone. Here probes join
+only when they are both **close and co-methylated**: consecutive probes $p$,
+$p+1$ are placed in the same cluster when
+
+$$x_{p+1} - x_p \le \texttt{max-gap} \quad\text{and}\quad \hat\rho\big(r_p, r_{p+1}\big) \ge \texttt{rho-min},$$
+
+where $r_p$ are the within-subject residuals from §2 and $\hat\rho$ is the
+Pearson correlation across all sample-visits. Distance is therefore an upper
+bound rather than the rule, and a cluster reflects the locus's correlation
+structure rather than the array panel's spacing.
+
+## 4. Region detection (replaces minfi §2.6)
+
+### Weighted total-variation segmentation
+
+Within each cluster, with precision weights $w_p =
+\mathrm{se}(\hat\beta_p)^{-2}$, the segmentation solves
+
+$$\hat\theta = \arg\min_{\theta}\ \tfrac12\sum_p w_p\big(\hat\beta_p - \theta_p\big)^2 \; + \; \lambda_0\,\bar w \sum_p e^{-d_p/\texttt{decay}}\,\big|\theta_{p+1} - \theta_p\big|,$$
+
+with $d_p = x_{p+1} - x_p$ and $\bar w$ the median precision weight. Scaling
+the penalty by $\bar w$ makes $\lambda_0$ dimensionless, so one grid transfers
+across M-values, beta values and cohorts without retuning. The problem is
+solved by ADMM with a split variable for the differences; convergence is
+assessed on primal and dual residuals, and **breakpoints are read from the
+exactly-sparse split variable** rather than by thresholding $\hat\theta$, so
+segmentation does not depend on the scale of the response.
+
+$\lambda_0$ is selected by $K$-fold cross-validation over the grid
+`--lam-grid`, **holding out whole subjects**: splitting a subject's visits
+across folds would place the contrast under selection on both sides of the
+split.
+
+Each resulting segment of at least `--min-probes` probes and effect at least
+`--min-effect` is reported as its precision-weighted mean (relaxed-lasso
+convention), an unbiased weighted mean in M-value units directly comparable
+with a per-probe coefficient. The region statistic is the maximum $|z|$ over
+its probes.
+
+### Within-subject permutation
+
+The null is generated by permuting the exposure **only among visits of the
+same subject**, $t_{ij} \mapsto t_{i\pi_i(j)}$ with $\pi_i$ a random
+permutation of subject $i$'s visits, refitting §2 and re-running segmentation.
+Family-wise error is the tail probability of the null maximum statistic over
+the genome. This preserves each subject's array, cohort, chip and covariate
+values by construction; only the timing of the exposure is randomised.
+
+`--also-naive-perm` additionally runs the legacy scheme — a free permutation
+of the exposure across all samples — on the *identical* observed statistic, so
+the two nulls differ in nothing but the permutation scheme. This is a
+diagnostic, not an inferential option.
+
+### Stability and cross-array generalisation
+
+Regions are additionally subjected to (i) **stability selection** over
+`--n-boot` subsamples of subjects, reporting the fraction of subsamples in
+which a region is recovered, and (ii) **cross-array generalisation**: the
+region effect is re-estimated in the 450K cohort alone and in the EPIC cohort
+alone, and reported as a correlation and a sign concordance across regions.
+Neither can be improved by calling more regions, which is their point.
+
+## 5. Block detection (replaces minfi §2.7)
+
+Analysis is restricted to open-sea probes carried by **both** arrays, since
+open sea is the content that differs most between them. Clusters are formed as
+in §3 with block-appropriate thresholds (`--max-gap 1500`, `--rho-min 0.20`;
+open-sea correlation is weaker than promoter correlation).
+
+Cluster-level effects $y_k$ with standard errors $\sigma_k$ are modelled by a
+**3-state distance-aware hidden Markov model** with states hypomethylated /
+neutral / hypermethylated. Transitions between clusters separated by $d$ bp
+are
+
+$$A(d) = e^{-d/L}\,I + \big(1 - e^{-d/L}\big)\,\mathbf{1}\pi^{\!\top},$$
+
+so nearby clusters are likely to share a state while distant clusters are
+independent draws from the stationary distribution $\pi$ — the discrete
+analogue of an Ornstein–Uhlenbeck decay, with $L$ set by `--length-scale`.
+Emissions are Gaussian with the cluster's **own** standard error,
+$y_k \mid S_k = s \sim \mathcal{N}(\mu_s,\ \tau_s^2 + \sigma_k^2)$, so
+imprecisely estimated clusters are automatically down-weighted. Parameters are
+fitted by EM (Baum–Welch) and states ordered by $\mu_s$.
+
+Blocks are runs of at least `--min-clusters` clusters whose posterior for a
+non-neutral state exceeds `--min-post`. Because boundaries come from posterior
+decoding, each block carries a per-block posterior and its boundaries are soft
+— neither of which a thresholded loess curve provides.
+
+`--fixed-collapse` reports what the legacy 500 bp / 1500 bp `cpgCollapse` rule
+would have produced on the same probes, so the change in the unit of analysis
+is explicit.
+
+## 6. Controlled comparison
+
+The legacy path (`clusterMaker` → `loessByCluster` → `bumphunterEngine` with
+free permutation; `cpgCollapse` → `blockFinder`) is run on the **identical
+harmonised matrix** with minfi's documented defaults, so the comparison
+isolates the method rather than the preprocessing.
+
+`blockFinder` requires a lower cutoff than the probe-level default
+(`--block-cutoff`): when no collapsed bump clears the cutoff, minfi
+dereferences an atomic result table and raises an error rather than returning
+an empty result.
+
+Methods are compared on unit count, unit width and probes per unit, on the
+permutation null's 95th percentile of max $|z|$, and on cross-array agreement.
+For the last of these, every method's per-array region effect is re-estimated
+from **one shared within-subject estimator** — the §2 per-array probe fits,
+inverse-variance weighted across each region interval — because each method's
+native per-array estimator differs and an unadjusted comparison conflates unit
+selection with estimator choice. The number of units entering each correlation
+is reported alongside it.
+
+## 7. Reproducibility
+
+Each stage writes a run record (`run_config.json`, `hsmm_params.json`,
+`baseline_summary.json`) carrying resolved parameters, probe and sample
+counts, degrees of freedom, selected smoothness, seed and runtime. Nextflow's
+timeline, report, trace and DAG are written to `${outdir}/pipeline_info/`.
+All randomisation is seeded by `--seed`, which sets the permutation,
+bootstrap and CV-fold draws.
+
+## References
+
+- Aryee MJ, Jaffe AE, Corrada-Bravo H, Ladd-Acosta C, Feinberg AP, Hansen KD,
+  Irizarry RA. Minfi: a flexible and comprehensive Bioconductor package for
+  the analysis of Infinium DNA methylation microarrays. *Bioinformatics*
+  2014;30(10):1363–9. doi:10.1093/bioinformatics/btu049
+- Murat K, Grüning B, Poterlowicz PW, Westgate G, Tobin DJ, Poterlowicz K.
+  EWASGalaxy: a tools suite for population epigenetics integrated into Galaxy.
+  *bioRxiv* 2019. doi:10.1101/553784

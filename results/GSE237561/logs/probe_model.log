@@ -1,0 +1,12 @@
+[17:35:30] joint: 126 samples, 38 subjects, 9 design columns
+[17:49:58] joint: consensus within-subject correlation = 0.3471
+[17:50:03] 450K: 92 samples, 26 subjects, 8 design columns
+[17:55:23] 450K: consensus within-subject correlation = 0.3485
+[17:55:27] EPIC: 34 samples, 12 subjects, 8 design columns
+[17:59:17] EPIC: consensus within-subject correlation = 0.3085
+      fit n_samples n_subjects within_subject_cor n_probes n_fdr05
+   <char>     <num>      <num>              <num>    <num>   <num>
+1:  joint       126         38          0.3471488   422898       1
+2:   450K        92         26          0.3485350   422898       2
+3:   EPIC        34         12          0.3084808   422898       0
+[17:59:40] done

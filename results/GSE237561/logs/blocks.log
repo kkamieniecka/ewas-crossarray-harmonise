@@ -1,0 +1,11 @@
+[    1.3s] open-sea, shared, autosomal probes: 152721 of 422898 harmonised
+[    2.5s] co-methylated open-sea clusters: 16173 covering 40308 probes
+[    2.6s] cluster widths: median 196 bp, median 2 probes/cluster
+[    2.7s] cluster effects: median |z|=0.747, max |z|=4.99
+[    4.0s] HSMM converged in 21 iterations, loglik=38380.5
+[    4.0s]   state means (M-value per 100 units): hypo=0.0000, neutral=0.0098, hyper=0.0136
+[    4.0s]   state sd: [0.0041, 0.0001, 0.0118]; stationary pi: [0.1235, 0.6208, 0.2557]
+[    4.0s] blocks called: 8
+[    4.0s] cross-array block effects: r=-0.118, sign concordance=62.5%
+[    4.0s] legacy fixed-width collapse would give 21598 units (median 237 bp) vs 16173 co-methylation clusters (median 196 bp)
+[    4.4s] done

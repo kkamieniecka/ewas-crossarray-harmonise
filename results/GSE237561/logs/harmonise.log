@@ -1,0 +1,19 @@
+[16:54:22] reading 92 450K samples
+[16:55:24] reading 34 EPIC samples
+[16:57:31] samples failing QC: 0; sex mismatches: 0
+[16:57:31] noob on 450K
+[16:58:07] noob on EPIC
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19218072 1026.4   36296017  1938.5         NA   22067320  1178.6
+Vcells 495741575 3782.3 1356662255 10350.6      16384 1356662255 10350.6
+[16:58:41] combineArrays -> virtual 450K probe space
+[convertArray] Casting as IlluminaHumanMethylation450k
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19223296 1026.7   36296017  1938.5         NA   22067320  1178.6
+Vcells 461577740 3521.6 1356662255 10350.6      16384 1356662255 10350.6
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19224649 1026.8   36296017  1938.5         NA   22067320  1178.6
+Vcells 519508770 3963.6 1356662255 10350.6      16384 1356662255 10350.6
+[16:58:46] combined: 452567 probes x 126 samples
+[16:58:49] after filtering: 422898 probes
+[16:59:56] wrote harmonised.rds: 422898 probes x 126 samples

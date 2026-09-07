@@ -1,0 +1,39 @@
+[    0.8s] loaded 422898 autosomal probes x 126 samples
+[    0.8s] 38 subjects, visits/subject min=2 median=3 max=5
+[    0.8s] array split: {'450K': 92, 'EPIC': 34}
+[    3.5s] probe fit: df=80, median |z|=0.723, max |z|=6.01
+[    6.6s] co-methylation clusters: 24552 clusters covering 56623 probes (13.4%)
+[    6.6s] cross-validating the TV smoothness over held-out subjects
+[   42.4s]   CV lam0=0.05   score=1.29715
+[   79.2s]   CV lam0=0.1    score=1.26881
+[  126.5s]   CV lam0=0.25   score=1.24539
+[  186.7s]   CV lam0=0.5    score=1.23603
+[  250.4s]   CV lam0=1      score=1.22946
+[  319.5s]   CV lam0=2      score=1.22482
+[  388.4s]   CV lam0=4      score=1.22152
+[  388.4s] selected lam0=4.0
+[  450.6s] observed regions: 207; max |z| = 5.90
+[  450.6s] within-subject permutation null, 200 replicates
+[ 1009.8s]   within permutation 25/200, running max|z| 95th pct = 5.53
+[ 1656.3s]   within permutation 50/200, running max|z| 95th pct = 5.52
+[ 2283.0s]   within permutation 75/200, running max|z| 95th pct = 5.86
+[ 2841.3s]   within permutation 100/200, running max|z| 95th pct = 5.83
+[ 3379.4s]   within permutation 125/200, running max|z| 95th pct = 5.80
+[ 3865.4s]   within permutation 150/200, running max|z| 95th pct = 5.77
+[ 4328.5s]   within permutation 175/200, running max|z| 95th pct = 5.74
+[ 4793.1s]   within permutation 200/200, running max|z| 95th pct = 5.99
+[ 4793.1s] naive (bumphunter-style) permutation null, 200 replicates
+[ 5258.9s]   naive permutation 25/200, running max|z| 95th pct = 5.24
+[ 5724.2s]   naive permutation 50/200, running max|z| 95th pct = 5.87
+[ 6190.3s]   naive permutation 75/200, running max|z| 95th pct = 5.92
+[ 6657.5s]   naive permutation 100/200, running max|z| 95th pct = 6.31
+[ 7125.9s]   naive permutation 125/200, running max|z| 95th pct = 6.51
+[ 7592.8s]   naive permutation 150/200, running max|z| 95th pct = 6.19
+[ 8060.4s]   naive permutation 175/200, running max|z| 95th pct = 6.31
+[ 8527.1s]   naive permutation 200/200, running max|z| 95th pct = 6.28
+[ 8527.1s] null max|z| 95th pct: within=5.99 naive=6.28
+[ 8527.1s] stability selection, 50 subject subsamples
+[ 9397.4s] stability: median=0.00, 3 regions selected in >=60% of subsamples
+[ 9397.4s] cross-array generalisation
+[ 9399.2s] cross-array region effects: r=0.191, sign concordance=64.7% over 207 regions
+[ 9399.2s] wrote 207 regions; 0 at FWER<=0.05

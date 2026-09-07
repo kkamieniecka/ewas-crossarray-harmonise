@@ -1,0 +1,5 @@
+method,level,n_regions,n_fwer05,median_width_bp,median_n_probes,cross_array_r_common,sign_concordance_common,cross_array_r,sign_concordance,null_q95_max_abs_z,total_bp,n_cross_array,runtime_s,n_clusters,n_cross_array_common,n_fwer05_naive_perm,null_q95_naive_perm
+bumphunter (minfi 2.6),region,214,0.0,1.0,1.0,0.3973387175186966,0.7289719626168224,0.3804889495061472,0.6728971962616822,,7575.0,214.0,337.991262,220883,214.0,,
+TV + within-subject perm (2.6 replacement),region,207,0.0,84.0,3.0,0.38797234063335195,0.821256038647343,0.1907180952066819,0.6473429951690821,5.989466376405591,31633.0,207.0,9399.2,24552,207.0,0.0,6.276896063121353
+blockFinder (minfi 2.7),block,4,0.0,2460.75,3.0,0.6738595097143514,1.0,,,,11468.0,,337.991262,220883,4.0,,
+distance-aware HSMM (2.7 replacement),block,8,,62300.5,9.0,0.3070952154892356,0.875,-0.11767229528569227,0.625,,785131.0,8.0,4.4,16173,8.0,,

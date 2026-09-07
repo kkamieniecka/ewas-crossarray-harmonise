@@ -1,0 +1,42 @@
+[    1.3s] loaded 422898 autosomal probes x 126 samples
+[    1.3s] 38 subjects, visits/subject min=2 median=3 max=5
+[    1.3s] array split: {'450K': 92, 'EPIC': 34}
+[    4.9s] probe fit: df=80, median |z|=0.723, max |z|=6.01
+[    9.2s] co-methylation clusters: 24552 clusters covering 56623 probes (13.4%)
+[    9.3s] cross-validating the TV smoothness over held-out subjects
+[   71.7s]   CV lam0=4      score=1.22152
+[  135.8s]   CV lam0=8      score=1.21933
+[  204.9s]   CV lam0=16     score=1.21747
+[  276.6s]   CV lam0=32     score=1.21548
+[  347.0s]   CV lam0=64     score=1.21375
+[  409.3s]   CV lam0=128    score=1.2123
+[  409.3s] selected lam0=128.0
+[  481.7s] observed regions: 207; max |z| = 5.90
+[  481.7s] within-subject permutation null, 0 replicates
+[  481.7s] stability selection, 0 subject subsamples
+[  481.7s] stability: median=0.00, 0 regions selected in >=60% of subsamples
+[  481.7s] cross-array generalisation
+[  483.7s] cross-array region effects: r=0.191, sign concordance=64.7% over 207 regions
+Traceback (most recent call last):
+  File "/Users/kkamieniecka/.claude-science/orgs/21e97f41-b3ce-48c6-aea7-75f68aa1781b/workspaces/8656892f-c9dd-4a77-8498-1a6a869258db/ewas-harmonise/bin/04_dmr_ml.py", line 326, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/kkamieniecka/.claude-science/orgs/21e97f41-b3ce-48c6-aea7-75f68aa1781b/workspaces/8656892f-c9dd-4a77-8498-1a6a869258db/ewas-harmonise/bin/04_dmr_ml.py", line 314, in main
+    null_within_q95=float(np.quantile(null_w, 0.95)),
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kkamieniecka/.claude-science/conda/envs/python/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 4496, in quantile
+    return _quantile_unchecked(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kkamieniecka/.claude-science/conda/envs/python/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 4510, in _quantile_unchecked
+    return _ureduce(a,
+           ^^^^^^^^^^^
+  File "/Users/kkamieniecka/.claude-science/conda/envs/python/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 3880, in _ureduce
+    r = func(a, **kwargs)
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/kkamieniecka/.claude-science/conda/envs/python/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 4669, in _quantile_ureduce_func
+    result = _quantile(arr,
+             ^^^^^^^^^^^^^^
+  File "/Users/kkamieniecka/.claude-science/conda/envs/python/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 4793, in _quantile
+    slices_having_nans = np.isnan(arr[-1, ...])
+                                  ~~~^^^^^^^^^
+IndexError: index -1 is out of bounds for axis 0 with size 0

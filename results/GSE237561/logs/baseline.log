@@ -1,0 +1,17 @@
+[  13.4s] baseline universe: 422898 autosomal probes x 126 samples
+[  13.4s] design: ~ expo + smoking_score + cd8t + cd4t + bcell + gran + mono + nk   ->  9 columns, rank 9
+[  13.4s] clusterMaker(maxGap=300): 220883 clusters; median probes/cluster = 1
+[  13.7s] bumphunter, B=200 (free permutation of the exposure column)
+[bumphunterEngine] The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+Loading required package: rngtools
+Warning message:
+In bumphunterEngine(object, design = design, chr = chr, pos, cluster = cluster,  :
+  The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+[ 187.6s] bumphunter regions: 214; at fwer<=0.05: 0
+[ 189.0s] per-array fit 450K: n=92
+[ 189.9s] per-array fit EPIC: n=34
+[ 190.6s] cross-array region effects: r=0.38, sign concordance=67.3%
+[ 190.6s] cpgCollapse (open sea, 500bp gap / 1500bp width) + blockFinder
+Loading required package: IlluminaHumanMethylation450kanno.ilmn12.hg19
+[ 338.0s] blockFinder blocks: 4; collapsed units: 202407 (median width 1 bp)
+[ 338.0s] done
