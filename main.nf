@@ -18,7 +18,8 @@ nextflow.enable.dsl = 2
 params.sheet        = null           // minfi-format sample sheet (required)
 params.idat_dir     = null           // directory of *_Grn/_Red.idat.gz (required)
 params.probe_map    = null           // crossarray_probe_map.csv.gz (required)
-params.outdir       = 'results'
+// params.outdir default lives in nextflow.config, which references it for the
+// timeline/report/trace/dag paths before this script is evaluated
 
 params.exposure     = 'days_on_clozapine'
 params.exposure_scale = 100

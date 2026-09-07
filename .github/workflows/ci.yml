@@ -15,7 +15,7 @@ jobs:
       matrix:
         python: ['3.11', '3.12']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -27,7 +27,7 @@ jobs:
     name: Galaxy wrapper XML
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
       - name: well-formedness
         run: xmllint --noout galaxy/*.xml
@@ -51,8 +51,8 @@ jobs:
     name: Nextflow config and syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -63,7 +63,8 @@ jobs:
       - name: every profile resolves
         run: |
           for p in conda docker singularity test; do
-            nextflow config . -profile $p > /dev/null
+            echo "--- profile: $p"
+            nextflow config . -profile $p > /dev/null || exit 1
           done
       - name: workflow parses
         run: nextflow run . --help
