@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `nextflow.config` parses under the strict config parser introduced in
+  Nextflow 25. Three problems, all of which only appeared once the workflow was
+  run through Nextflow itself rather than stage by stage: a `def` timestamp
+  declaration (rejected — "variable declarations cannot be mixed with config
+  statements", the nf-core idiom that worked under 23/24), quoted resource
+  literals such as `'8.GB'` (a quoted value is parsed as a memory or duration
+  string, where the valid forms are `'8 GB'` and `'8 h'`; the dotted form is
+  only valid unquoted), and a top-level `workflow.onComplete { }` in `main.nf`
+  (now a config closure, which still reports on a failed run).
+- `params.outdir` is declared in `nextflow.config`, which references it for the
+  timeline, report, trace and DAG paths. It was declared only in `main.nf`, and
+  because the config is evaluated before the script, the audit trail was written
+  under `null/pipeline_info/` unless `--outdir` was given explicitly.
+
+### Changed
+
+- CI checks workflow syntax with `nextflow lint` rather than
+  `nextflow run . --help`, which executed the workflow and failed on the
+  required `--sheet` guard instead of testing syntax. Profile and lint failures
+  are emitted as `::error::` annotations so the message is visible in the run
+  summary without opening the log.
+
 ## [0.1.0] - 2026-09-05
 
 First working version. Validated end to end on GSE237561 (126 arrays,
