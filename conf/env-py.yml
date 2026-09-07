@@ -1,0 +1,10 @@
+name: ewas-harmonise-py
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=1.26
+  - pandas=2.2
+  - scipy=1.13
+  - matplotlib-base=3.8
+  - tabulate     # pandas.to_markdown in 06_compare.py

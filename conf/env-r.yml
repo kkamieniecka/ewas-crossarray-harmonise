@@ -1,0 +1,29 @@
+# R layer for the harmonisation and legacy-baseline stages.
+#
+# PLATFORM NOTE: Bioconda publishes bioconductor-* builds for linux-64 and
+# osx-64 only. On osx-arm64 (Apple Silicon) this solve fails, and the
+# Bioconductor project's own arm64 binaries are built against the CRAN R
+# framework rather than a conda R, so their compiled objects resolve libR at a
+# path holding a different R version. On that platform, create the CRAN layer
+# from conda-forge and then source-install the Bioconductor layer with
+# conf/install_bioc.R, or use the `docker`/`singularity` profile instead.
+name: ewas-harmonise-r
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base=4.4
+  - bioconductor-minfi
+  - bioconductor-bumphunter
+  - bioconductor-limma
+  - bioconductor-illuminahumanmethylation450kmanifest
+  - bioconductor-illuminahumanmethylationepicmanifest
+  - bioconductor-illuminahumanmethylation450kanno.ilmn12.hg19
+  - bioconductor-illuminahumanmethylationepicanno.ilm10b4.hg19
+  - r-data.table
+  - r-optparse
+  - r-jsonlite
+  - r-nlme          # 02_probe_model.R: repeated-measures GLS
+  # optional, only if --bmiq TRUE is requested; not needed for the default
+  # pipeline because shared 450K/EPIC probes are chemically identical
+  # - bioconductor-watermelon
