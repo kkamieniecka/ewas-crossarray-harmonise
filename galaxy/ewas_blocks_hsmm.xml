@@ -24,6 +24,7 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
     --min-post $hsmm.min_post
     --min-clusters $hsmm.min_clusters
     --seed $hsmm.seed
+    --var-method '$hsmm.var_method'
     #if $fixed_collapse
         --fixed-collapse
     #end if
@@ -57,6 +58,10 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
             <param name="min_clusters" type="integer" value="3" min="1"
                    label="Minimum clusters per block"/>
             <param name="seed" type="integer" value="1" label="Random seed"/>
+            <param name="var_method" type="select" label="Variance moderation">
+                <option value="limma" selected="true">limma squeezeVar (empirical Bayes)</option>
+                <option value="mom">method of moments (no limma)</option>
+            </param>
         </section>
 
         <param name="fixed_collapse" type="boolean" checked="true" truevalue="true" falsevalue=""

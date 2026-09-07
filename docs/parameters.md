@@ -111,6 +111,7 @@ runs the Python one, which is how the agreement is re-checked on real data.
 | `--min-post` | `0.80` | posterior threshold for calling a block |
 | `--min-clusters` | `3` | minimum clusters per block |
 | `--fixed-collapse` | off | also report what the legacy fixed 500/1500 bp collapse would have produced on the same probes |
+| `--var-method` | `limma` | R only, as in stage 04: `limma` (squeezeVar) or `mom`, the ported method-of-moments path the Python uses. The stage-level equivalence check runs `mom` on both sides, which is also what makes it runnable without limma |
 | `--array-col` | `Array_Type` | column splitting the per-array check. An arm with no residual degrees of freedom after the within transform is declined rather than fitted, and `cross_array_r` is then `null` |
 
 ## Legacy baseline (`03_baseline_bumphunter.R`)

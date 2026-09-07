@@ -59,6 +59,8 @@ opt_list <- list(
   make_option("--min-clusters", type = "integer", default = 3L),
   make_option("--fixed-collapse", action = "store_true", default = FALSE,
               help = "also report the legacy fixed-width collapse, for comparison of the resulting units"),
+  make_option("--var-method", type = "character", default = "limma",
+              help = "variance moderation: 'limma' (squeezeVar) or 'mom', the ported method-of-moments path the Python uses [default %default]"),
   make_option("--seed", type = "integer", default = 1L)
 )
 opt <- parse_args(OptionParser(option_list = opt_list))
@@ -157,7 +159,7 @@ log_msg(sprintf("cluster widths: median %d bp, median %d probes/cluster",
                 as.integer(median(cend - cstart + 1)), as.integer(median(cnp))))
 
 # ---- cluster-level within-subject effects ---------------------------------
-fit <- fit_within(Mc, expo, subj, cov)
+fit <- fit_within(Mc, expo, subj, cov, var_method = opt$var_method)
 log_msg(sprintf("cluster effects: median |z|=%.3f, max |z|=%.2f",
                 median(abs(fit$z)), max(abs(fit$z))))
 
@@ -207,7 +209,8 @@ for (a in sort(unique(arr))) {
     next
   }
   per_arr[[a]] <- fit_within(Mc[, s, drop = FALSE], expo[s], subj[s],
-                             if (!is.null(cov)) cov[s, , drop = FALSE] else NULL)
+                             if (!is.null(cov)) cov[s, , drop = FALSE] else NULL,
+                             var_method = opt$var_method)
   clus[[paste0("effect_", a)]] <- per_arr[[a]]$beta
 }
 arrs <- names(per_arr)
@@ -270,7 +273,8 @@ write(jsonlite::toJSON(list(
   state_labels = labs, n_clusters = n_cl, n_openSea_probes = nrow(ann),
   n_blocks = nrow(bl), cross_array_r = r_pearson,
   cross_array_sign_concordance = sign_conc, legacy_fixed_collapse = legacy,
-  covars_used = cov_names, implementation = "R", args = opt,
+  covars_used = cov_names, var_method = opt$var_method,
+  implementation = "R", args = opt,
   runtime_s = round(as.numeric(difftime(Sys.time(), T0, units = "secs")), 1)),
   # na = "null": a skipped array leaves cross_array_r as NA, and jsonlite
   # would otherwise write the string "NA" where the Python writes null

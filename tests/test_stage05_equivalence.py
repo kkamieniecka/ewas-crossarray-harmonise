@@ -40,7 +40,12 @@ def check(name, ok, detail=""):
 
 
 def run(cmd, out_dir, stage_dir, covars):
-    subprocess.run(cmd + ["--in-dir", stage_dir, "--out-dir", out_dir,
+    # --var-method mom on the R side: the Python moderates variance with the
+    # ported method-of-moments path, so mom-vs-mom is the comparison that
+    # isolates the port. It also keeps this check runnable without limma,
+    # which CI deliberately does not install.
+    extra = ["--var-method", "mom"] if cmd[0] == "Rscript" else []
+    proc = subprocess.run(cmd + extra + ["--in-dir", stage_dir, "--out-dir", out_dir,
                           "--probe-map", os.path.join(stage_dir,
                                                       "crossarray_probe_map.csv.gz"),
                           "--exposure-scale", "1", "--covars", covars,
@@ -50,7 +55,12 @@ def run(cmd, out_dir, stage_dir, covars):
                           # change to the stage defaults
                           "--max-gap", "100", "--rho-min", "0.05",
                           "--min-clusters", "3", "--fixed-collapse"],
-                   check=True, capture_output=True, text=True)
+                          capture_output=True, text=True)
+    if proc.returncode:
+        # surface the driver's own message: a CI log that only says
+        # "returned non-zero" costs a round trip to reproduce
+        print(proc.stdout[-2000:] + proc.stderr[-2000:])
+        raise SystemExit(f"{cmd[0]} stage 05 failed (exit {proc.returncode})")
 
 
 def strict_json(path):

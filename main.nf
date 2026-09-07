@@ -245,7 +245,7 @@ process BLOCKS_HSMM {
     script:
     """
     Rscript ${projectDir}/bin/05_blocks_hsmm.R ${blocksArgs()} \\
-        --probe-map ${probe_map}
+        --probe-map ${probe_map} --var-method ${params.var_method}
     """
 }
 

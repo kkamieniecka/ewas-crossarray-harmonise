@@ -302,5 +302,10 @@ merely three subjects. On the CI fixture the 450K arm fails that test and is
 declined with a log line, and `cross_array_r` is `null` rather than a number
 computed from an unidentified fit.
 
+The equivalence run uses `--var-method mom` on the R side, because the Python
+moderates variance with the ported method-of-moments path: mom against mom is
+the comparison that isolates the port rather than mixing in limma's estimator,
+and it is also what lets the check run in a job with no limma installed.
+
 R costs about 9x the Python's wall clock on the CI fixture (0.9 s vs 0.1 s),
 the same order as the ratio measured for stage 04.

@@ -35,7 +35,10 @@ All notable changes to this project are documented here. The format follows
 - `p_fwer_within_mcse` (and `p_fwer_naive_mcse`) in `dmr_ml.csv`: Monte Carlo
   standard error of each permutation p-value, with a log line counting regions
   within two standard errors of 0.05.
-- `--var-method limma|mom` (R only) and `--cv_folds` as a Nextflow parameter.
+- `--var-method limma|mom` (R only) on both R stages, and `--cv_folds` as a
+  Nextflow parameter. Stage 05 initially shipped without the flag, which made
+  it silently require limma; the stage-level check runs `mom` on both sides,
+  which is the comparison that isolates the port and keeps CI limma-free.
 
 ### Fixed
 - Block direction was labelled by assuming the zero-effect HSMM state is the
