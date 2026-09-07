@@ -141,5 +141,39 @@ check("co-methylated runs form single clusters",
 check("uncorrelated neighbours are not clustered",
       np.mean(cl[:40] == -1) > 0.8, f"{np.mean(cl[:40]==-1):.2f} singletons")
 
+# --- 8. identification degrees of freedom ----------------------------------
+# df = n_samples - n_subjects - rank(within design). A subset made only of
+# single-visit subjects carries no within-subject information, and the drivers
+# use this to skip such folds instead of failing inside the fit.
+sing = np.array([f"P{i}" for i in range(12)])
+paired = np.repeat([f"Q{i}" for i in range(6)], 2)
+expo12 = np.arange(12.0)
+check("within_df is 0 when every subject has one visit",
+      E.within_df(expo12, sing) == 0, f"df={E.within_df(expo12, sing)}")
+check("within_df counts paired subjects correctly",
+      E.within_df(expo12, paired) == 12 - 6 - 1,
+      f"df={E.within_df(expo12, paired)}")
+check("within_df drops with an extra time-varying covariate",
+      E.within_df(expo12, paired, np.arange(12.0)[:, None] ** 2) == 12 - 6 - 2,
+      f"df={E.within_df(expo12, paired, np.arange(12.0)[:, None] ** 2)}")
+
+# --- 9. portable fold assignment -------------------------------------------
+subs = np.array([f"S{i:02d}" for i in range(23)])
+f1 = E.fold_assign(subs, 5, seed=1)
+flat = [s_ for fold in f1 for s_ in fold]
+check("fold_assign is deterministic for a given seed",
+      f1 == E.fold_assign(subs, 5, seed=1), "")
+check("fold_assign is invariant to input order",
+      f1 == E.fold_assign(subs[::-1], 5, seed=1), "")
+check("every subject appears exactly once", sorted(flat) == sorted(subs.tolist()),
+      f"{len(flat)} of {len(subs)}")
+sizes = sorted(len(f) for f in f1)
+check("fold sizes differ by at most one", sizes[-1] - sizes[0] <= 1, f"sizes={sizes}")
+check("a different seed gives a different split",
+      f1 != E.fold_assign(subs, 5, seed=2), "")
+check("fewer subjects than folds still yields non-empty folds",
+      all(len(f) > 0 for f in E.fold_assign(subs[:3], 5, seed=1)),
+      f"{[len(f) for f in E.fold_assign(subs[:3], 5, seed=1)]}")
+
 print("\n" + ("ALL PASS" if not FAIL else f"{len(FAIL)} FAILED: {FAIL}"))
 sys.exit(1 if FAIL else 0)

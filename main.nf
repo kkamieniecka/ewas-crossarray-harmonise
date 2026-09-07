@@ -40,6 +40,14 @@ params.n_perm       = 200
 params.n_boot       = 50
 params.min_probes   = 3
 params.min_effect   = 0.05
+params.cv_folds     = 5
+// Stage 04 exists in R and in Python. They are proved equivalent function by
+// function (tests/test_equivalence.R) and produce identical regions on the
+// same input; the R implementation is the default because the rest of the
+// suite is R, and costs about twice the runtime and twice the memory. Set
+// --dmr_impl python to run the Python one, e.g. to audit the agreement.
+params.dmr_impl     = 'r'            // 'r' | 'python'
+params.var_method   = 'limma'        // R only: 'limma' (squeezeVar) | 'mom'
 
 params.block_max_gap     = 1500
 params.block_rho_min     = 0.20
@@ -124,8 +132,56 @@ process BASELINE {
     """
 }
 
+// Stage 04 exists twice, in R and in Python, with identical command-line
+// flags. The argument list is built once here so the two processes cannot
+// drift apart.
+def dmrArgs() {
+    def args = [
+        '--in-dir .', '--out-dir dmr',
+        "--exposure ${params.exposure}", "--exposure-scale ${params.exposure_scale}",
+        "--subject ${params.subject}", "--covars ${params.covars}",
+        "--max-gap ${params.max_gap}", "--rho-min ${params.rho_min}",
+        "--decay-bp ${params.decay_bp}", "--lam-grid ${params.lam_grid}",
+        "--cv-folds ${params.cv_folds}",
+        "--min-probes ${params.min_probes}", "--min-effect ${params.min_effect}",
+        "--n-perm ${params.n_perm}", "--n-boot ${params.n_boot}",
+        "--seed ${params.seed}",
+    ]
+    if( params.naive_perm ) args << '--also-naive-perm'
+    return args.join(' ')
+}
+
 process DMR_ML {
     tag 'dmr-ml'
+    publishDir "${params.outdir}/dmr", mode: 'copy'
+    label 'r_heavy'
+
+    input:
+    path mval
+    path dims
+    path pheno
+    path anno
+
+    output:
+    path 'dmr/dmr_ml.csv',            emit: regions
+    path 'dmr/lambda_cv.csv',         emit: cv
+    path 'dmr/permutation_null.csv',  emit: null_dist
+    path 'dmr/run_config.json',       emit: cfg
+
+    script:
+    """
+    Rscript ${projectDir}/bin/04_dmr_ml.R ${dmrArgs()} \\
+        --var-method ${params.var_method}
+    """
+}
+
+// The Python implementation of the same stage. Kept in the tree so that the
+// agreement between the two can be re-checked on real data at any time
+// (--dmr_impl python); tests/test_equivalence.R proves it function by function
+// on generated inputs. Its outputs carry the same names, so COMPARE and the
+// report do not care which one ran.
+process DMR_ML_PY {
+    tag 'dmr-ml-py'
     publishDir "${params.outdir}/dmr", mode: 'copy'
     label 'py_heavy'
 
@@ -142,17 +198,8 @@ process DMR_ML {
     path 'dmr/run_config.json',       emit: cfg
 
     script:
-    def naive = params.naive_perm ? '--also-naive-perm' : ''
     """
-    python ${projectDir}/bin/04_dmr_ml.py \\
-        --in-dir . --out-dir dmr \\
-        --exposure ${params.exposure} --exposure-scale ${params.exposure_scale} \\
-        --subject ${params.subject} --covars ${params.covars} \\
-        --max-gap ${params.max_gap} --rho-min ${params.rho_min} \\
-        --decay-bp ${params.decay_bp} --lam-grid ${params.lam_grid} \\
-        --min-probes ${params.min_probes} --min-effect ${params.min_effect} \\
-        --n-perm ${params.n_perm} --n-boot ${params.n_boot} \\
-        --seed ${params.seed} ${naive}
+    python ${projectDir}/bin/04_dmr_ml.py ${dmrArgs()}
     """
 }
 
@@ -212,16 +259,25 @@ workflow {
     idats = file(required('idat_dir', params.idat_dir))
     pmap  = file(required('probe_map', params.probe_map))
 
+    def dmr_impl = "${params.dmr_impl}".toLowerCase()
+    if( !(dmr_impl in ['r', 'python']) )
+        exit 1, "ewas-harmonise: --dmr_impl must be 'r' or 'python', got '${params.dmr_impl}'"
+
     HARMONISE(sheet, idats)
     PROBE_MODEL(HARMONISE.out.rds)
-    DMR_ML(HARMONISE.out.mval, HARMONISE.out.dims,
-           HARMONISE.out.pheno, HARMONISE.out.anno)
+    if( dmr_impl == 'r' )
+        DMR_ML(HARMONISE.out.mval, HARMONISE.out.dims,
+               HARMONISE.out.pheno, HARMONISE.out.anno)
+    else
+        DMR_ML_PY(HARMONISE.out.mval, HARMONISE.out.dims,
+                  HARMONISE.out.pheno, HARMONISE.out.anno)
+    dmr_out = dmr_impl == 'r' ? DMR_ML.out : DMR_ML_PY.out
     BLOCKS_HSMM(HARMONISE.out.mval, HARMONISE.out.dims,
                 HARMONISE.out.pheno, HARMONISE.out.anno, pmap)
 
     if (params.run_baseline) {
         BASELINE(HARMONISE.out.rds)
-        COMPARE(DMR_ML.out.regions.mix(DMR_ML.out.cfg).collect(),
+        COMPARE(dmr_out.regions.mix(dmr_out.cfg).collect(),
                 BLOCKS_HSMM.out.blocks.mix(BLOCKS_HSMM.out.cfg).collect(),
                 BASELINE.out.all.collect())
     }

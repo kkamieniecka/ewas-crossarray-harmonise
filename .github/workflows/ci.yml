@@ -23,6 +23,29 @@ jobs:
       - name: property checks on ewasml.py
         run: python tests/test_ewasml.py
 
+  cross-language-equivalence:
+    name: R core reproduces the Python core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy pandas
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      # Matrix ships with R. limma is deliberately not installed here: the
+      # test treats its comparison as informational and skips it when absent,
+      # so CI stays fast while still checking the ported moderation.
+      - name: R dependencies
+        run: install.packages(c("optparse", "jsonlite"))
+        shell: Rscript {0}
+      - name: fixtures and reference outputs from the Python core
+        run: python tests/gen_equivalence_fixtures.py --out-dir fx
+      - name: R must reproduce them
+        run: Rscript tests/test_equivalence.R fx
+
   galaxy-wrappers:
     name: Galaxy wrapper XML
     runs-on: ubuntu-latest

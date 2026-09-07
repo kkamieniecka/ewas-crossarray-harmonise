@@ -106,6 +106,12 @@ def build_design(ph, args):
     return expo, subj, arr, cov, cov_names
 
 
+def mcse(p, n_perm: int):
+    """Monte Carlo standard error of a permutation p-value, sqrt(p(1-p)/B)."""
+    p = np.asarray(p, dtype=float)
+    return np.sqrt(p * (1 - p) / n_perm) if n_perm > 0 else np.zeros_like(p)
+
+
 def tv_track(ann, beta, se, lam0, decay_bp, n_iter):
     """Chromosome-wise TV denoising of the precision-weighted effect track."""
     w = np.where(se > 0, 1.0 / se ** 2, 0.0)
@@ -130,15 +136,26 @@ def cv_lambda(M, ann, expo, subj, cov, args, rng):
     held-out subjects' own within-subject effects.
     """
     uniq = np.unique(subj)
-    folds = np.array_split(rng.permutation(uniq), args.cv_folds)
+    # deterministic, language-independent split: see E.fold_assign
+    folds = E.fold_assign(subj, args.cv_folds, seed=args.seed)
     grid = [float(x) for x in args.lam_grid.split(",")]
     rows = []
+    n_skipped = 0
     for lam0 in grid:
         tot, ntot = 0.0, 0
         for f in folds:
             te = np.isin(subj, f)
             tr = ~te
             if len(np.unique(subj[te])) < 2 or len(np.unique(subj[tr])) < 4:
+                n_skipped += 1
+                continue
+            # Subject counts alone do not make a fold estimable: a fold of
+            # mostly single-visit subjects has no residual df once subject
+            # intercepts are removed. Skip it rather than fail the stage.
+            if (E.within_df(expo[te], subj[te], cov[te] if cov is not None else None) <= 0
+                    or E.within_df(expo[tr], subj[tr],
+                                   cov[tr] if cov is not None else None) <= 0):
+                n_skipped += 1
                 continue
             ftr = E.fit_within(M[:, tr], expo[tr], subj[tr],
                                cov[tr] if cov is not None else None)
@@ -152,6 +169,15 @@ def cv_lambda(M, ann, expo, subj, cov, args, rng):
                          score=tot / ntot if ntot else np.nan))
         log(f"  CV lam0={lam0:<6g} score={rows[-1]['score']:.6g}")
     cv = pd.DataFrame(rows)
+    if n_skipped:
+        log(f"  {n_skipped}/{len(grid) * len(folds)} fold-evaluations skipped "
+            f"as not identified (too few subjects or no residual df)")
+    if not np.isfinite(cv.score).any():
+        raise ValueError(
+            "no cross-validation fold was estimable: with "
+            f"{len(uniq)} subjects and {args.cv_folds} folds every split left "
+            "too little within-subject variation. Use fewer folds, or drop "
+            "single-visit subjects.")
     best = float(cv.loc[cv.score.idxmin(), "lam0"])
     return best, cv
 
@@ -229,12 +255,23 @@ def main(argv=None):
     null_w = null_max("within", args.n_perm)
     reg["p_fwer_within"] = [(1 + (null_w >= abs(z)).sum()) / (1 + len(null_w))
                             for z in reg.z]
+    # Monte Carlo standard error of the permutation p-value. Reported because
+    # the FWER decision at 0.05 is a step function of the null tail: when many
+    # correlated regions have similar |z|, a p-value whose MCSE straddles the
+    # threshold is not evidence about the region, only about n_perm.
+    reg["p_fwer_within_mcse"] = mcse(reg.p_fwer_within.values, len(null_w))
+    n_borderline = int(((reg.p_fwer_within - 2 * reg.p_fwer_within_mcse < 0.05) &
+                        (reg.p_fwer_within + 2 * reg.p_fwer_within_mcse > 0.05)).sum())
+    if n_borderline:
+        log(f"{n_borderline} region(s) have a FWER p-value within 2 MC standard "
+            f"errors of 0.05; raise --n-perm above {args.n_perm} to resolve them")
     nulls = pd.DataFrame({"within": null_w})
     if args.also_naive_perm:
         log(f"naive (bumphunter-style) permutation null, {args.n_perm} replicates")
         null_n = null_max("naive", args.n_perm)
         reg["p_fwer_naive"] = [(1 + (null_n >= abs(z)).sum()) / (1 + len(null_n))
                                for z in reg.z]
+        reg["p_fwer_naive_mcse"] = mcse(reg.p_fwer_naive.values, len(null_n))
         nulls["naive"] = null_n
         log(f"null max|z| 95th pct: within={np.quantile(null_w,0.95):.2f} "
             f"naive={np.quantile(null_n,0.95):.2f}")
@@ -249,7 +286,8 @@ def main(argv=None):
 
     def fit_subset(sub):
         sel = np.isin(subj, sub)
-        if len(np.unique(subj[sel])) < 3:
+        if len(np.unique(subj[sel])) < 3 or E.within_df(
+                expo[sel], subj[sel], cov[sel] if cov is not None else None) <= 0:
             return []
         f = E.fit_within(M[:, sel], expo[sel], subj[sel],
                          cov[sel] if cov is not None else None)
@@ -275,7 +313,9 @@ def main(argv=None):
     rep = {}
     for a in np.unique(arr):
         sel = arr == a
-        if len(np.unique(subj[sel])) < 3:
+        if len(np.unique(subj[sel])) < 3 or E.within_df(
+                expo[sel], subj[sel], cov[sel] if cov is not None else None) <= 0:
+            log(f"  {a}: not enough within-subject information to fit; skipped")
             continue
         f = E.fit_within(M[:, sel], expo[sel], subj[sel],
                          cov[sel] if cov is not None else None)
@@ -310,6 +350,7 @@ def main(argv=None):
                n_subjects=int(len(np.unique(subj))), covars_used=cov_names,
                lam0_selected=lam0, n_clusters=n_cl, n_regions=int(len(reg)),
                n_fwer_05=int((reg.p_fwer_within <= 0.05).sum()),
+               n_fwer_borderline=n_borderline,
                cross_array_r=r_pearson, cross_array_sign_concordance=sign_conc,
                # --n-perm 0 is a legitimate mode (smoothness diagnostics
                # without the expensive null), so the null may be empty

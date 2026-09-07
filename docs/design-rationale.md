@@ -155,3 +155,97 @@ Read `n_cross_array_common` alongside any of these correlations. A
 correlation over the 4 blocks a block method returns is not the same evidence
 as one over 200 regions, and the figure annotates the unit count for that
 reason.
+
+## 7. Why the region finder exists twice, in R and in Python
+
+§2.6 was first written in Python because the estimator is banded sparse linear
+algebra and a total-variation solve. Nothing in it needs Python: the whole
+numerical dependency surface is dense/banded linear algebra, a trigamma
+inverse and a group-wise mean, all of which R has natively or through
+`Matrix`. Since the rest of the suite — and the group that maintains it — is
+R, the region finder was ported (`bin/ewasml.R`, `bin/04_dmr_ml.R`) and R is
+now the default. The Python implementation stays in the tree so agreement can
+be re-checked at any time with `--dmr_impl python`.
+
+### What "equivalent" was made to mean
+
+`tests/test_equivalence.R` generates inputs and reference outputs by importing
+the Python core directly, then requires R to reproduce them. Every
+deterministic quantity is held to a numerical tolerance, and every
+integer-valued or identity-valued one to exact equality:
+
+| quantity | agreement |
+|---|---|
+| within-subject effect, SE, z | 1e-16 |
+| variance moderation (`mom` path) | 2e-15 |
+| co-methylation cluster ids | exact |
+| distance penalty, denoised track | 1e-15 |
+| segmentation breakpoints | identical set |
+| region boundaries, probe index ranges | exact |
+| region effect, SE, z | 1e-15 |
+| residual df, fold assignment | exact |
+
+Two things cannot be compared draw for draw, because the two languages have
+different pseudo-random generators: the permutation null and the
+stability-selection subsamples. These are handled two ways. The arithmetic
+downstream of the draws is made comparable by feeding R the *reference* draws
+from the fixture, and the sampling schemes themselves are checked by the
+properties that define them — within-subject permutation preserves each
+subject's own multiset of exposures and leaves single-visit subjects fixed;
+free permutation preserves the overall multiset; stability selection draws
+subjects without replacement at the intended size.
+
+On a 100k-probe input the two implementations return the same 98 clusters, the
+same 200 regions and the same max |z| = 144.97.
+
+### limma is the default moderation, and that is now a measurement
+
+The Python core hand-rolled an empirical-Bayes variance moderation. Reading it
+suggested it was a reimplementation of `limma::squeezeVar`; the R port made
+that testable, and the two agree to 2.7e-14. The R implementation therefore
+calls limma by default (`--var-method limma`) and keeps the ported
+method-of-moments path (`--var-method mom`) for the equivalence check.
+
+### What the port cost, and what it bought
+
+Cost, measured on a 100k-probe x 126-sample input and linear in probe count,
+so roughly 4.2x these numbers at EPIC scale:
+
+| | runtime | peak RSS |
+|---|---|---|
+| Python | 37 s | 0.96 GiB |
+| R | 80 s | 1.78 GiB |
+
+R is about twice as slow and takes about twice the memory; `r_heavy` is sized
+for that. What the port bought was three defects that two independent
+implementations of the same estimator made visible and that one implementation
+had hidden:
+
+1. **The cross-validation guard did not check identification.** Both
+   implementations failed identically on a fold whose subjects were mostly
+   single-visit: the guard counted subjects but never asked whether the fold
+   retained residual degrees of freedom after subject intercepts. The
+   condition `n_samples - n_subjects - rank(within design) > 0` is now a
+   first-class core function (`within_df`) applied at all three places a
+   subset is fitted — CV folds, stability subsamples, per-array replication —
+   with skipped folds counted in the log rather than silently dropped.
+2. **The fold split was not portable.** Each language's RNG produced a
+   different assignment, so the selected smoothness differed between
+   implementations on identical input. Folds are now assigned by an explicit
+   hash of `(seed, subject id)` (`fold_assign`), which is reproducible across
+   languages, R versions and NumPy versions. The seed still gives an
+   independent split.
+3. **The FWER decision was less stable than it looked.** At 200 permutations
+   the two implementations reported 8 and 1 regions at FWER <= 0.05 from
+   statistically indistinguishable nulls (KS p = 0.47). The cause is not a
+   bug: seven regions had |z| between 14.0 and 15.6, exactly where the 0.05
+   cut falls, so an ordinary Monte Carlo wobble in the null tail flips them
+   together. Both implementations now report `p_fwer_within_mcse`, the Monte
+   Carlo standard error of each permutation p-value, and log how many regions
+   sit within two of them of the threshold. A bootstrap over the null
+   replicates confirms the per-region binomial error is the right scale.
+
+Point 3 is a property of the method, not of the port: any permutation FWER on
+correlated regions has it. It was invisible until two implementations
+disagreed. Publication runs should use `--n-perm 1000` or more and read the
+MCSE column before treating a region near the threshold as significant.

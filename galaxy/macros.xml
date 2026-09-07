@@ -14,6 +14,20 @@
         </requirements>
     </xml>
 
+    <!-- Stage 04 (region finder) in R. It needs neither minfi nor bumphunter:
+         the numerical core is banded sparse linear algebra plus limma's
+         variance moderation. limma is a hard requirement here because it is
+         the default moderation method; the mom method needs only Matrix. -->
+    <xml name="requirements_r_ml">
+        <requirements>
+            <requirement type="package" version="4.4">r-base</requirement>
+            <requirement type="package" version="3.62.0">bioconductor-limma</requirement>
+            <requirement type="package" version="1.7_1">r-matrix</requirement>
+            <requirement type="package" version="1.7.5">r-optparse</requirement>
+            <requirement type="package" version="1.8.9">r-jsonlite</requirement>
+        </requirements>
+    </xml>
+
     <xml name="requirements_py">
         <requirements>
             <requirement type="package" version="3.11">python</requirement>

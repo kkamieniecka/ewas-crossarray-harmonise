@@ -79,3 +79,18 @@ nextflow run . -profile test,conda --sheet <sheet> --idat_dir <dir> \
 The `test` profile runs the identical graph with 10 permutations and the legacy
 baseline switched off, which exercises every process and file contract in a
 few minutes rather than hours.
+
+## What each stage needs
+
+`04_dmr_ml.R` (the default region finder) needs only `r-base`, `Matrix`,
+`optparse`, `jsonlite` and `limma` — not minfi or bumphunter, which are
+required by the harmonisation and legacy-baseline stages. That matters if you
+want to run only the region finder: the light dependency set installs from
+conda-forge plus one Bioconductor package, and `--var-method mom` drops limma
+too, at the cost of losing the default moderation.
+
+Memory: the region finder holds a few copies of the M-value matrix. Measured
+peak RSS is 1.78 GiB for R and 0.96 GiB for Python at 100k probes x 126
+samples, scaling linearly in probes — so roughly 7.5 GiB (R) or 4.1 GiB
+(Python) on a full EPIC panel. The `r_heavy` label requests 24 GB, which
+covers it with headroom for the harmonisation stage.

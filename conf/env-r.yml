@@ -24,6 +24,7 @@ dependencies:
   - r-optparse
   - r-jsonlite
   - r-nlme          # 02_probe_model.R: repeated-measures GLS
+  - r-matrix        # 04_dmr_ml.R: banded sparse solve in the TV denoiser
   # optional, only if --bmiq TRUE is requested; not needed for the default
   # pipeline because shared 450K/EPIC probes are chemically identical
   # - bioconductor-watermelon

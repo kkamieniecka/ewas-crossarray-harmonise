@@ -6,6 +6,36 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `bin/ewasml.R` and `bin/04_dmr_ml.R`: the §2.6 region finder ported to R,
+  now the pipeline default (`--dmr_impl r`). The Python implementation stays
+  in the tree and is selectable with `--dmr_impl python`.
+- `tests/test_equivalence.R` + `tests/gen_equivalence_fixtures.py`: the R core
+  must reproduce the Python core on generated inputs — effects and region
+  statistics to 1e-15, cluster ids, breakpoints and region boundaries exactly.
+  Run in CI without limma, whose comparison then skips.
+- `within_df()` in both cores: residual degrees of freedom of the
+  within-subject fit, `n_samples - n_subjects - rank(within design)`.
+- `fold_assign()` in both cores: cross-validation folds assigned by a hash of
+  `(seed, subject id)` instead of an RNG shuffle, so the selected smoothness
+  is identical across languages and library versions.
+- `p_fwer_within_mcse` (and `p_fwer_naive_mcse`) in `dmr_ml.csv`: Monte Carlo
+  standard error of each permutation p-value, with a log line counting regions
+  within two standard errors of 0.05.
+- `--var-method limma|mom` (R only) and `--cv_folds` as a Nextflow parameter.
+
+### Fixed
+- Cross-validation, stability selection and per-array replication skipped
+  subsets by subject count alone; a fold of mostly single-visit subjects has
+  no within-subject information and crashed the stage. All three now test
+  identification with `within_df` and skip with a counted log line; the stage
+  errors only when no fold is estimable.
+- The Galaxy region-finder wrapper ran the Python script with the Python
+  requirement set; it now runs R with `requirements_r_ml` (r-base, limma,
+  Matrix, optparse, jsonlite — neither minfi nor bumphunter).
+
+## [Unreleased]
+
 ### Fixed
 
 - `nextflow.config` parses under the strict config parser introduced in

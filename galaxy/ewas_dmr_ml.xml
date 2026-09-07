@@ -3,14 +3,14 @@
     <macros>
         <import>macros.xml</import>
     </macros>
-    <expand macro="requirements_py"/>
+    <expand macro="requirements_r_ml"/>
     <command detect_errors="exit_code"><![CDATA[
 mkdir -p in out &&
 ln -s '$mval' in/mval.f64 &&
 ln -s '$dims' in/mval_dims.json &&
 ln -s '$pheno' in/pheno_used.csv &&
 ln -s '$anno' in/probe_annotation.csv &&
-python '$__tool_directory__/../bin/04_dmr_ml.py'
+Rscript '$__tool_directory__/../bin/04_dmr_ml.R'
     --in-dir in
     --out-dir out
     --exposure '$design.exposure'
@@ -27,6 +27,7 @@ python '$__tool_directory__/../bin/04_dmr_ml.py'
     --n-perm $infer.n_perm
     --n-boot $infer.n_boot
     --seed $infer.seed
+    --var-method '$infer.var_method'
     #if $infer.also_naive_perm
         --also-naive-perm
     #end if
@@ -80,6 +81,10 @@ python '$__tool_directory__/../bin/04_dmr_ml.py'
                    label="Also run the legacy free permutation"
                    help="Runs bumphunter's permutation scheme on the same statistic, so its mis-calibration on this design can be quantified rather than assumed."/>
             <param name="seed" type="integer" value="1" label="Random seed"/>
+            <param name="var_method" type="select" label="Variance moderation">
+                <option value="limma" selected="true">limma squeezeVar (empirical Bayes)</option>
+                <option value="mom">method of moments (no limma)</option>
+            </param>
         </section>
     </inputs>
     <outputs>

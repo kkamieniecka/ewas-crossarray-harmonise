@@ -55,7 +55,13 @@ There is a unit test asserting this.
 | `--bmiq` | `false` | off deliberately: every shared probe has the same Infinium design type, so there is no type-I/II imbalance introduced by harmonisation |
 | `--keep_gset` | `true` | also write a `GenomicRatioSet`, needed by the legacy baseline |
 
-## Region detection, §2.6 replacement (`04_dmr_ml.py`)
+## Region detection, §2.6 replacement (`04_dmr_ml.R`, `04_dmr_ml.py`)
+
+Two implementations, identical flags, proved equivalent in
+`tests/test_equivalence.R` (see design-rationale §7). R is the default;
+`--dmr_impl python` runs the Python one. R costs about 2x runtime and 2x
+memory.
+
 
 | param | default | notes |
 |---|---|---|
@@ -69,9 +75,24 @@ There is a unit test asserting this.
 | `--n-perm` | `200` | within-subject permutations for the FWER null |
 | `--n-boot` | `50` | subject subsamples for stability selection |
 | `--also-naive-perm` | off | additionally run the legacy free permutation on the same statistic, to quantify its mis-calibration |
+| `--var-method` | `limma` | **R only.** `limma` uses `squeezeVar`; `mom` uses the ported method-of-moments moderation. The two agree to 2.7e-14, so this is an audit switch, not a modelling choice |
+| `--seed` | `1` | seeds the permutation and subsample draws. It does **not** seed the CV fold split, which is a deterministic hash of `(seed, subject id)` so that R and Python select the same smoothness; changing the seed still changes the split |
 
 Setting `--n-perm 0` is a legitimate diagnostic mode (segmentation only, no
 inference); the run record omits the null quantiles rather than failing.
+
+`dmr_ml.csv` reports `p_fwer_within_mcse`, the Monte Carlo standard error
+`sqrt(p(1-p)/n_perm)` of each permutation p-value, and the stage logs how many
+regions lie within two standard errors of 0.05. When correlated regions share
+a similar |z| near the threshold, the count passing at 0.05 moves with the
+null draw and not with the data: at `--n-perm 200` on a test input the two
+implementations reported 8 and 1 significant regions from indistinguishable
+nulls. Treat that log line as an instruction to raise `--n-perm` (1000 or
+more for publication) rather than as a result.
+
+The Nextflow parameters that choose the implementation are `--dmr_impl`
+(`r` | `python`) and `--var_method` (`limma` | `mom`); the Galaxy wrapper runs
+R only, and exposes the moderation choice as *Variance moderation*.
 
 ## Block detection, §2.7 replacement (`05_blocks_hsmm.py`)
 

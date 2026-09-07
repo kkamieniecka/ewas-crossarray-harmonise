@@ -80,7 +80,7 @@ distributed, and that is what breaks the legacy region and block finders:
 
 ## What replaces sections 2.6 and 2.7
 
-### §2.6 — bump hunting → `bin/04_dmr_ml.py`
+### §2.6 — bump hunting → `bin/04_dmr_ml.R` (or `.py`)
 
 | minfi 2.6 | why it fails here | replacement |
 |---|---|---|
@@ -88,6 +88,14 @@ distributed, and that is what breaks the legacy region and block finders:
 | `loessByCluster`, fixed span | a span in *probes* treats a 50 bp and a 50 kb step as equal neighbours; returns a curve with no breakpoints | **weighted total-variation denoising** with an `exp(-d/decay)` fusion penalty — piecewise-constant, so breakpoints are explicit; smoothness by held-out-**subject** CV |
 | permute the design column freely | destroys within-subject pairing and, because subject/cohort/chip/array are nested, manufactures between-array contrasts no real reassignment could produce | **within-subject permutation**; the legacy scheme is available via `--also-naive-perm` purely to quantify its mis-calibration |
 | a single FWER per region | — | FWER **plus** stability selection over subject subsamples, **plus** cross-array generalisation |
+
+Stage 04 ships in **both R and Python**, with identical flags and proved
+equivalent function by function (`tests/test_equivalence.R`: effects agree to
+1e-16, identical cluster ids, identical segmentation and region boundaries).
+R is the default because the rest of the suite is R; `--dmr_impl python` runs
+the other one, which is how the agreement is re-checked on real data. See
+docs/design-rationale.md §7 for what the port cost and the three defects it
+exposed.
 
 ### §2.7 — block finding → `bin/05_blocks_hsmm.py`
 
@@ -142,11 +150,15 @@ ewas-crossarray-harmonise/
 │   ├── 01_harmonise.R            IDAT -> harmonised beta/M (+ float64 export)
 │   ├── 02_probe_model.R          repeated-measures probe-level effects
 │   ├── 03_baseline_bumphunter.R  LEGACY §2.6/§2.7, same matrix
-│   ├── 04_dmr_ml.py              §2.6 replacement
+│   ├── 04_dmr_ml.R               §2.6 replacement (default)
+│   ├── 04_dmr_ml.py              §2.6 replacement, Python twin (--dmr_impl python)
 │   ├── 05_blocks_hsmm.py         §2.7 replacement
 │   ├── 06_compare.py             controlled old-vs-new benchmark
-│   └── ewasml.py                 numerical core (no R dependency)
-├── tests/test_ewasml.py          17 numerical property checks
+│   ├── ewasml.R                  numerical core, R
+│   └── ewasml.py                 numerical core, Python
+├── tests/test_ewasml.py          numerical property checks (Python core)
+├── tests/test_equivalence.R      R core must reproduce the Python core exactly
+├── tests/gen_equivalence_fixtures.py   generates those inputs and references
 ├── galaxy/                       Galaxy wrappers, shared macros, .shed.yml
 ├── conf/                         conda specs + source-install script
 ├── docs/                         methods, rationale, parameters, results

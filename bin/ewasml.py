@@ -120,6 +120,60 @@ def _demean_by_group(X: np.ndarray, groups: np.ndarray) -> np.ndarray:
     return out
 
 
+def within_df(exposure: np.ndarray, subject: np.ndarray,
+              covars: np.ndarray | None = None) -> int:
+    """Residual degrees of freedom the within-subject fit would have.
+
+    n_samples - n_subjects - rank(within design). Returns 0 when the exposure
+    itself is annihilated by the within transform, i.e. when the longitudinal
+    contrast is not identified at all. Lets a caller decide whether a
+    cross-validation fold or a subsample is estimable before paying for the
+    fit -- a fold of mostly single-visit subjects is not, and this is the
+    cheap test for it.
+    """
+    X = np.asarray(exposure, dtype=float).reshape(-1, 1)
+    if covars is not None and np.size(covars):
+        X = np.hstack([X, np.asarray(covars, dtype=float)])
+    Xw = _demean_by_group(X, subject)
+    keep = np.abs(Xw).max(axis=0) > 1e-9
+    if not keep[0]:
+        return 0
+    return int(len(subject) - len(np.unique(subject)) - int(keep.sum()))
+
+
+
+_FNV_OFFSET = 2166136261
+_FNV_PRIME = 16777619
+
+
+def _fnv1a(s: str) -> int:
+    """32-bit FNV-1a. Small, exactly specified, and reproducible in any
+    language -- which is the only reason to hand-roll a hash here."""
+    h = _FNV_OFFSET
+    for b in s.encode("utf-8"):
+        h = ((h ^ b) * _FNV_PRIME) & 0xFFFFFFFF
+    return h
+
+
+def fold_assign(subject, n_folds: int, seed: int = 0) -> list:
+    """Assign subjects to cross-validation folds deterministically.
+
+    Subjects are ordered by a hash of (seed, subject id) and dealt into
+    contiguous folds. This replaces a seeded RNG shuffle so that the fold
+    split -- and therefore the selected smoothness -- is identical in the R
+    and Python implementations and stable across library versions. Changing
+    `seed` gives an independent split.
+    """
+    uniq = sorted({str(s) for s in subject})
+    keys = sorted(uniq, key=lambda s: (_fnv1a(f"{seed}:{s}"), s))
+    n, k = len(keys), max(1, int(n_folds))
+    sizes = [n // k + (1 if i < n % k else 0) for i in range(k)]
+    out, at = [], 0
+    for sz in sizes:
+        out.append(keys[at:at + sz])
+        at += sz
+    return [f for f in out if f]
+
 def fit_within(M: np.ndarray, exposure: np.ndarray, subject: np.ndarray,
                covars: np.ndarray | None = None,
                shrink_var: bool = True) -> WithinFit:
