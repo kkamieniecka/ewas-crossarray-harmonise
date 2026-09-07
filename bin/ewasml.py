@@ -574,9 +574,10 @@ class HSMMFit:
     sigma: np.ndarray
     pi: np.ndarray
     length_scale: float
-    posterior: np.ndarray      # n x 3
+    posterior: np.ndarray      # n x 3, columns ordered by mu
     loglik: float
     n_iter: int
+    neutral: int               # column holding the state pinned at mu = 0
 
 
 def _dist_transitions(d: np.ndarray, pi: np.ndarray, L: float) -> np.ndarray:
@@ -673,25 +674,58 @@ def fit_block_hsmm(y: np.ndarray, se: np.ndarray, pos: np.ndarray,
             break
         prev_ll = ll
     order = np.argsort(mu)
+    # Which column now holds the state that was pinned at mu = 0? Usually the
+    # middle one, but if every cluster effect falls on one side of zero the
+    # pinned state sorts to an end, and then the extreme columns are NOT
+    # hypo/hyper relative to no change. Callers must use this index rather
+    # than assuming the middle column; see call_blocks().
+    neutral = int(np.flatnonzero(order == 1)[0])
     return HSMMFit(mu=mu[order], sigma=sigma[order], pi=pi[order],
                    length_scale=length_scale, posterior=post[:, order],
-                   loglik=float(prev_ll), n_iter=it + 1)
+                   loglik=float(prev_ll), n_iter=it + 1, neutral=neutral)
 
+
+
+def state_labels(neutral: int):
+    """
+    Column labels for the three HSMM states, ordered by mu.
+
+    `neutral` is HSMMFit.neutral, the column pinned at mu = 0. Normally that is
+    the middle column and the labels are the familiar hypo/neutral/hyper. When
+    all cluster effects fall on one side of zero the pinned state sorts to an
+    end, so two states sit on the same side of no change and a bare direction
+    would be ambiguous; those get a column suffix instead of being silently
+    collapsed.
+    """
+    out = [None, None, None]
+    out[neutral] = "neutral"
+    for side, ks in (("hypo", [k for k in range(3) if k < neutral]),
+                     ("hyper", [k for k in range(3) if k > neutral])):
+        for k in ks:
+            out[k] = side if len(ks) == 1 else f"{side}_s{k}"
+    return out
 
 def call_blocks(chrom, start, end, post, min_post: float = 0.80,
-                min_clusters: int = 3):
+                min_clusters: int = 3, neutral: int = 1):
     """
     Maximal runs whose posterior for a non-neutral state exceeds `min_post`.
     The reported block posterior is the mean over its clusters, so a block is
     reported with a calibrated confidence instead of a binary permutation call.
+
+    `neutral` is the column of `post` holding the state pinned at mu = 0, i.e.
+    HSMMFit.neutral -- pass it. Columns are ordered by mu, so a state left of
+    that column is hypomethylated relative to no change and one right of it is
+    hypermethylated. Assuming the middle column is neutral mislabels every
+    block when all cluster effects fall on one side of zero: the pinned state
+    then sorts to an end, and the middle column is a genuine effect state.
     """
-    state = np.where(post.max(axis=1) >= min_post, post.argmax(axis=1), 1)
+    state = np.where(post.max(axis=1) >= min_post, post.argmax(axis=1), neutral)
     out = []
     i = 0
     n = len(state)
     while i < n:
         s = state[i]
-        if s == 1:
+        if s == neutral:
             i += 1
             continue
         j = i
@@ -702,7 +736,7 @@ def call_blocks(chrom, start, end, post, min_post: float = 0.80,
                             end=int(end[j]),
                             width=int(end[j] - start[i] + 1),
                             n_clusters=int(j - i + 1),
-                            direction="hypo" if s == 0 else "hyper",
+                            direction="hypo" if s < neutral else "hyper",
                             posterior=float(post[i:j + 1, s].mean())))
         i = j + 1
     return out

@@ -42,9 +42,16 @@ jobs:
         run: install.packages(c("optparse", "jsonlite"))
         shell: Rscript {0}
       - name: fixtures and reference outputs from the Python core
-        run: python tests/gen_equivalence_fixtures.py --out-dir fx
+        run: python tests/gen_equivalence_fixtures.py --out-dir fx --stage-dir stage
       - name: R must reproduce them
         run: Rscript tests/test_equivalence.R fx
+      # The function-level fixtures above cannot reach driver code, where both
+      # defects the port exposed lived (state labelling, non-finite values in
+      # the parameters record). This runs the two stage-05 drivers end to end
+      # and compares every output file, including the case where an array arm
+      # is unidentified and the cross-array fields are undefined.
+      - name: stage 05 drivers must agree end to end
+        run: python tests/test_stage05_equivalence.py stage
 
   galaxy-wrappers:
     name: Galaxy wrapper XML

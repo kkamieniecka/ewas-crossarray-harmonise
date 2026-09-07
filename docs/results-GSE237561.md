@@ -125,6 +125,16 @@ open-sea probes carried by both arrays, with stationary state probabilities
 Both correlations here rest on 4 and 8 units respectively and carry almost no
 information — they are reported for completeness, not as a comparison.
 
+> **This table predates the state-labelling fix** (see CHANGELOG, *Fixed*).
+> The run above assumed the middle HSMM state is the zero-effect one instead
+> of identifying it. Its state means were ordered hypo < neutral < hyper with
+> effects on both sides of zero, so the assumption was probably satisfied
+> here and the counts probably do not change — but that has not been
+> verified, because verifying it means re-running the stage. Until it is
+> re-run, treat the block count as a lower bound. `blocks_hsmm.csv` and
+> `openSea_cluster_effects.csv.gz` under `results/GSE237561/` come from the
+> same run and carry the same caveat.
+
 Two operational findings on the legacy implementation:
 
 - `blockFinder` **fails outright** at the probe-level cutoff (0.10): when no

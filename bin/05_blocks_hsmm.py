@@ -154,26 +154,44 @@ def main(argv=None):
     hs = E.fit_block_hsmm(fit.beta, fit.se, cmid, cchr,
                           length_scale=args.length_scale, seed=args.seed)
     log(f"HSMM converged in {hs.n_iter} iterations, loglik={hs.loglik:.1f}")
+    names = E.state_labels(hs.neutral)
     log(f"  state means (M-value per {args.exposure_scale:g} units): "
-        f"hypo={hs.mu[0]:.4f}, neutral={hs.mu[1]:.4f}, hyper={hs.mu[2]:.4f}")
+        + ", ".join(f"{names[k]}={hs.mu[k]:.4f}" for k in range(3)))
     log(f"  state sd: {np.round(hs.sigma,4).tolist()}; stationary pi: {np.round(hs.pi,4).tolist()}")
+    if hs.neutral != 1:
+        # Every cluster effect fell on one side of zero, so the state pinned at
+        # mu = 0 sorted to an end. Direction is labelled relative to that
+        # column, not to the middle one: with neutral at column 0 no block can
+        # be hypomethylated, and the middle column is a real effect state that
+        # would go unreported if it were treated as no change.
+        log(f"  NOTE: the zero-effect state is column {hs.neutral}, not the "
+            f"middle one -- all cluster effects lie on one side of zero, so "
+            f"only {'hyper' if hs.neutral == 0 else 'hypo'}methylated blocks "
+            f"can be called")
 
     blocks = E.call_blocks(cchr, cstart, cend, hs.posterior,
-                           min_post=args.min_post, min_clusters=args.min_clusters)
+                           min_post=args.min_post, min_clusters=args.min_clusters,
+                           neutral=hs.neutral)
     bl = pd.DataFrame(blocks)
     log(f"blocks called: {len(bl)}")
 
     clus = pd.DataFrame(dict(chr=cchr, start=cstart, end=cend, n_probes=cnp,
-                             effect_M=fit.beta, se=fit.se, z=fit.z,
-                             post_hypo=hs.posterior[:, 0],
-                             post_neutral=hs.posterior[:, 1],
-                             post_hyper=hs.posterior[:, 2]))
+                             effect_M=fit.beta, se=fit.se, z=fit.z))
+    for k in range(3):
+        clus[f"post_{names[k]}"] = hs.posterior[:, k]
 
     # --- cross-array check on the called blocks ----------------------------
     per_arr = {}
     for a in np.unique(arr):
         s = arr == a
-        if len(np.unique(subj[s])) < 3:
+        # Subject count alone does not make the within fit identified: after
+        # differencing out subject means, the exposure and the time-varying
+        # covariates must still leave residual degrees of freedom. Same guard
+        # as stage 04; without it an unidentified arm returns numbers rather
+        # than declining to fit.
+        df_a = E.within_df(expo[s], subj[s], cov[s] if cov is not None else None)
+        if len(np.unique(subj[s])) < 3 or df_a <= 0:
+            log(f"  {a}: no within-subject information to fit (df={df_a}); skipped")
             continue
         per_arr[a] = E.fit_within(Mc[:, s], expo[s], subj[s],
                                   cov[s] if cov is not None else None)
@@ -210,23 +228,39 @@ def main(argv=None):
         widths = pd.DataFrame(dict(g=gid, pos=pos)).groupby("g").pos.agg(["min", "max", "count"])
         widths["width"] = widths["max"] - widths["min"] + 1
         widths = widths[(widths["count"] >= 2) & (widths.width <= 1500)]
+        # median of an empty selection is NaN, and json.dump would write a bare
+        # NaN token that no strict JSON parser accepts; report null instead.
         legacy = dict(n_units=int(len(widths)),
-                      median_width_bp=float(widths.width.median()),
-                      median_probes=float(widths["count"].median()))
+                      median_width_bp=float(widths.width.median()) if len(widths) else None,
+                      median_probes=float(widths["count"].median()) if len(widths) else None)
+        mw = legacy["median_width_bp"]
         log(f"legacy fixed-width collapse would give {legacy['n_units']} units "
-            f"(median {legacy['median_width_bp']:.0f} bp) vs {n_cl} co-methylation clusters "
-            f"(median {np.median(cend-cstart+1):.0f} bp)")
+            f"(median {'NA' if mw is None else format(mw, '.0f')} bp) vs {n_cl} "
+            f"co-methylation clusters (median {np.median(cend-cstart+1):.0f} bp)")
 
     bl.to_csv(os.path.join(args.out_dir, "blocks_hsmm.csv"), index=False)
     clus.to_csv(os.path.join(args.out_dir, "openSea_cluster_effects.csv.gz"),
                 index=False, compression="gzip")
-    json.dump(dict(mu=hs.mu.tolist(), sigma=hs.sigma.tolist(), pi=hs.pi.tolist(),
+    def jsonable(x):
+        """NaN/Inf are not JSON; a skipped array or an empty selection must
+        serialise as null so any strict parser can read the file."""
+        if isinstance(x, dict):
+            return {k: jsonable(v) for k, v in x.items()}
+        if isinstance(x, (list, tuple)):
+            return [jsonable(v) for v in x]
+        if isinstance(x, float) and not np.isfinite(x):
+            return None
+        return x
+
+    json.dump(jsonable(dict(mu=hs.mu.tolist(), sigma=hs.sigma.tolist(), pi=hs.pi.tolist(),
                    length_scale=hs.length_scale, loglik=hs.loglik,
-                   n_iter=hs.n_iter, n_clusters=n_cl,
+                   n_iter=hs.n_iter, neutral_state=int(hs.neutral),
+                   state_labels=list(names), implementation="python",
+                   n_clusters=n_cl,
                    n_openSea_probes=int(len(ann)), n_blocks=int(len(bl)),
                    cross_array_r=r_pearson, cross_array_sign_concordance=sign_conc,
                    legacy_fixed_collapse=legacy, covars_used=cov_names,
-                   args=vars(args), runtime_s=round(time.time() - T0, 1)),
+                   args=vars(args), runtime_s=round(time.time() - T0, 1))),
               open(os.path.join(args.out_dir, "hsmm_params.json"), "w"),
               indent=1, default=str)
     log("done")

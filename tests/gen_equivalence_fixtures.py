@@ -97,6 +97,11 @@ def build_matrix(rng, ann, subject, exposure, covars):
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--out-dir", required=True)
+    p.add_argument("--stage-dir",
+                   help="also write the same design in the shape stage 01 emits "
+                        "(mval.f64/mval_dims.json, pheno_used.csv, "
+                        "probe_annotation.csv, crossarray_probe_map.csv.gz), so "
+                        "the stage drivers can be run end to end")
     args = p.parse_args(argv)
     os.makedirs(args.out_dir, exist_ok=True)
     O = lambda f: os.path.join(args.out_dir, f)  # noqa: E731
@@ -112,6 +117,31 @@ def main(argv=None):
     pd.DataFrame(dict(subject=subject, exposure=exposure, array=array,
                       cov1=covars[:, 0], cov2=covars[:, 1], cov3=covars[:, 2])
                  ).to_csv(O("design.csv"), index=False)
+
+    # ---- stage-driver inputs, optional ------------------------------------
+    # The same design under the names stage 01 publishes, so the stage 04/05
+    # drivers can be run end to end and their outputs compared. The two defects
+    # the port exposed (state labelling, non-finite values in the parameters
+    # record) were both in driver code, which the function-level fixtures above
+    # cannot reach.
+    if args.stage_dir:
+        os.makedirs(args.stage_dir, exist_ok=True)
+        S = lambda f: os.path.join(args.stage_dir, f)  # noqa: E731
+        samples = [f"X{i:03d}" for i in range(M.shape[1])]
+        write_f64(S("mval"), M, rownames=list(ann.probe), colnames=samples)
+        # stage 01 writes the probe id first and does not carry chr_num
+        ann[["probe", "chr", "pos"]].to_csv(S("probe_annotation.csv"), index=False)
+        pd.DataFrame(dict(Sample_Name=samples, Subject_ID=subject,
+                          Array_Type=array, days_on_clozapine=exposure,
+                          cov1=covars[:, 0], cov2=covars[:, 1],
+                          cov3=covars[:, 2])).to_csv(S("pheno_used.csv"),
+                                                     index=False)
+        # every probe shared and open sea, so the stage-05 filter keeps the
+        # whole panel: this fixture is about driver behaviour, not about the
+        # island/array composition, which the harmonisation stage tests cover
+        pd.DataFrame(dict(probe=ann.probe, status="shared_450K_EPIC",
+                          Relation_to_UCSC_CpG_Island="OpenSea")).to_csv(
+            S("crossarray_probe_map.csv.gz"), index=False, compression="gzip")
 
     # ---- 1. probe-level fit, with and without variance moderation ---------
     ref = {}
@@ -203,11 +233,82 @@ def main(argv=None):
             rows.extend(dict(k=k, fold=f_i, subject=s) for s in f)
     pd.DataFrame(rows).to_csv(O("folds.csv"), index=False)
 
+    # ---- 8. block HSMM (stage 05) ----------------------------------------
+    # Cluster-level inputs, the scale stage 05 actually fits: open-sea clusters
+    # with irregular spacing, per-cluster standard errors, and a few genuine
+    # runs of hypo/hyper effect for the HMM to find. Baum-Welch from fixed
+    # starting values uses no RNG, so unlike the region stage every quantity
+    # here is comparable across languages.
+    crng = np.random.default_rng(SEED + 7)
+    n_cl_fx = 900
+    ch, mid = [], []
+    for chrom in ("1", "2"):
+        pos = 0
+        for _ in range(n_cl_fx // 2):
+            pos += int(crng.integers(2_000, 400_000))
+            ch.append(chrom); mid.append(pos)
+    ch = np.array(ch); mid = np.array(mid, dtype=float)
+    n_cl_fx = len(ch)
+    hy = crng.normal(0, 0.03, n_cl_fx)
+    for st, dirn in ((40, -1), (150, 1), (300, -1), (520, 1), (700, -1)):
+        hy[st:st + 25] += dirn * crng.uniform(0.25, 0.45)
+    hse = crng.uniform(0.02, 0.12, n_cl_fx)
+    hy = hy + crng.normal(0, hse)
+    cstart = (mid - crng.integers(200, 1500, n_cl_fx)).astype(np.int64)
+    cend = (mid + crng.integers(200, 1500, n_cl_fx)).astype(np.int64)
+    pd.DataFrame(dict(chr=ch, mid=mid, start=cstart, end=cend,
+                      y=hy, se=hse)).to_csv(O("hsmm_input.csv"), index=False)
+
+    # A(d) itself, at distances spanning the length scale
+    dd = np.array([100.0, 5_000.0, 250_000.0, 1e6, 5e6])
+    pi0 = np.array([0.05, 0.90, 0.05])
+    A = E._dist_transitions(dd, pi0, 250_000.0)
+    pd.DataFrame(np.column_stack([dd, A.reshape(len(dd), 9)]),
+                 columns=["d"] + [f"a{i}{j}" for i in range(3) for j in range(3)]
+                 ).to_csv(O("transitions.csv"), index=False)
+
+    hs = E.fit_block_hsmm(hy, hse, mid, ch, length_scale=250_000.0, seed=1)
+    pd.DataFrame(dict(post_hypo=hs.posterior[:, 0],
+                      post_neutral=hs.posterior[:, 1],
+                      post_hyper=hs.posterior[:, 2])).to_csv(
+        O("hsmm_posterior.csv"), index=False)
+    ref.update(hsmm_mu=hs.mu.tolist(), hsmm_sigma=hs.sigma.tolist(),
+               hsmm_pi=hs.pi.tolist(), hsmm_loglik=float(hs.loglik),
+               hsmm_n_iter=int(hs.n_iter), hsmm_length_scale=250_000.0,
+               hsmm_n_clusters=int(n_cl_fx), hsmm_neutral=int(hs.neutral))
+    blk = pd.DataFrame(E.call_blocks(ch, cstart, cend, hs.posterior,
+                                     min_post=0.80, min_clusters=3,
+                                     neutral=hs.neutral))
+    blk.to_csv(O("blocks.csv"), index=False)
+    ref["n_blocks"] = int(len(blk))
+
+    # Degenerate ordering: every cluster effect on one side of zero, which is
+    # what the real GSE237561 fit does. The state pinned at mu = 0 then sorts
+    # to an end instead of the middle, so a caller that assumes the middle
+    # column is neutral labels the pinned state "hypo" and treats a genuine
+    # effect state as no change. Both implementations must agree on which
+    # column is neutral and label direction relative to it.
+    hy_pos = np.abs(hy) + 0.05
+    hs_pos = E.fit_block_hsmm(hy_pos, hse, mid, ch, length_scale=250_000.0)
+    pd.DataFrame(hs_pos.posterior,
+                 columns=["s0", "s1", "s2"]).to_csv(O("hsmm_posterior_pos.csv"),
+                                                    index=False)
+    blk_pos = pd.DataFrame(E.call_blocks(ch, cstart, cend, hs_pos.posterior,
+                                        min_post=0.80, min_clusters=3,
+                                        neutral=hs_pos.neutral))
+    blk_pos.to_csv(O("blocks_pos.csv"), index=False)
+    ref.update(hsmm_pos_mu=hs_pos.mu.tolist(),
+               hsmm_pos_neutral=int(hs_pos.neutral),
+               hsmm_pos_n_blocks=int(len(blk_pos)),
+               hsmm_pos_directions=sorted(blk_pos.direction.unique().tolist())
+               if len(blk_pos) else [])
+
     with open(O("reference.json"), "w") as fh:
         json.dump(ref, fh, indent=1)
     print(f"fixtures written to {args.out_dir}: "
           f"{N_PROBES} probes x {len(subject)} samples, "
-          f"{len(pd.DataFrame(reg.table))} reference regions")
+          f"{len(pd.DataFrame(reg.table))} reference regions, "
+          f"{len(blk)} reference blocks")
     return 0
 
 

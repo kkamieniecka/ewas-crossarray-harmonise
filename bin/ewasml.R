@@ -1,4 +1,5 @@
-## ewasml.R -- numerical core for the section 2.6 replacement (R port).
+## ewasml.R -- numerical core for the section 2.6 and 2.7 replacements
+## (R port).
 ##
 ## This is a line-for-line port of bin/ewasml.py. The Python module remains in
 ## the tree until the two agree on GSE237561; tests/test_equivalence.R measures
@@ -492,4 +493,218 @@ stability_selection <- function(fit_fn, subjects, n_boot = 100L, frac = 0.5,
   }
   list(freq = vapply(counts, function(v) v / n_boot, numeric(1)),
        n_boot = n_boot)
+}
+
+
+# ---------------------------------------------------------------------------
+# replaces cpgCollapse + wide-window loess: distance-aware block HSMM
+# ---------------------------------------------------------------------------
+
+#' Distance-dependent transition matrices, A(d) = p(d) I + (1 - p(d)) 1 pi_stat'.
+#'
+#' p(d) = exp(-d / L): adjacent clusters 100 bp apart are almost certainly in
+#' the same state, clusters 5 Mb apart are effectively independent draws from
+#' the stationary distribution. A fixed 250 kb loess window cannot represent
+#' that, which is why its block boundaries are resolution-limited.
+#'
+#' Returned as an (n, 3, 3) array to match the Python for testing. The fitter
+#' does not use it -- see fit_block_hsmm() for why.
+dist_transitions <- function(d, pi_stat, L) {
+  p <- exp(-d / L)
+  n <- length(p)
+  A <- array(0, dim = c(n, 3L, 3L))
+  for (j in 1:3) for (k in 1:3)
+    A[, j, k] <- p * (j == k) + (1 - p) * pi_stat[k]
+  A
+}
+
+#' Three-state block HMM over collapsed open-sea cluster effects.
+#'
+#' States are hypomethylated / neutral / hypermethylated; emissions are
+#' heteroscedastic, y_k ~ N(mu_s, sigma_s^2 + se_k^2), so a cluster estimated
+#' from few probes cannot drag a block on its own. Transitions are an explicit
+#' function of genomic distance. Fitted by Baum-Welch; posterior decoding gives
+#' soft boundaries and a per-block posterior in place of the loess block
+#' finder's thresholded curve.
+#'
+#' DIVERGENCE from the Python, and the only one here: A(d) is never
+#' materialised. Because A = p I + (1 - p) 1 pi', the forward and backward
+#' updates collapse to
+#'     alpha' A = p * alpha + (1 - p) * sum(alpha) * pi_stat
+#'     A (B * beta) = p * (B * beta) + (1 - p) * sum(pi_stat * B * beta)
+#' which is the same arithmetic in a different association order (~1e-15
+#' relative) and avoids an n x 3 x 3 array per EM iteration. The Python is left
+#' as the reference implementation because the GSE237561 results were produced
+#' with it; tests/test_equivalence.R measures the resulting difference in the
+#' posterior and in the called blocks.
+#'
+#' `seed` is accepted and ignored, as in the Python: Baum-Welch from these
+#' fixed starting values is deterministic, so this fit -- unlike stage 04's
+#' resampling -- is reproducible across languages exactly.
+fit_block_hsmm <- function(y, se, pos, chrom, length_scale = 250000,
+                           n_iter = 60L, tol = 1e-5, seed = 1L) {
+  y <- as.numeric(y); se <- as.numeric(se); pos <- as.numeric(pos)
+  n_all <- length(y)
+  q <- as.numeric(stats::quantile(y, c(0.05, 0.5, 0.95), na.rm = TRUE,
+                                  names = FALSE, type = 7))
+  mu <- c(min(q[1], -1e-3), 0, max(q[3], 1e-3))
+  ok <- !is.na(y)
+  sd0 <- max(sqrt(mean((y[ok] - mean(y[ok]))^2)), 1e-3)   # np.nanstd: ddof = 0
+  sigma <- c(sd0, sd0 / 2, sd0)
+  pi_stat <- c(0.05, 0.90, 0.05)   # NB: `pi` is R's constant, used below
+
+  # contiguous runs = chromosomes
+  cut <- if (n_all > 1L) which(chrom[-1] != chrom[-n_all]) else integer(0)
+  bounds <- c(0L, cut, n_all)
+  runs <- lapply(seq_len(length(bounds) - 1L),
+                 function(i) c(bounds[i] + 1L, bounds[i + 1L]))
+
+  prev_ll <- -Inf
+  post <- matrix(0, n_all, 3L)
+  it <- 0L
+  for (iter in seq_len(n_iter)) {
+    it <- iter
+    ll <- 0
+    num_mu <- numeric(3); den_mu <- numeric(3)
+    pi_acc <- numeric(3)
+    for (rg in runs) {
+      a <- rg[1]; b <- rg[2]
+      if (b < a) next
+      yy <- y[a:b]; ss <- se[a:b]; pp <- pos[a:b]
+      n <- length(yy)
+      vv <- outer(ss^2, sigma^2, "+")
+      B <- exp(-0.5 * (yy - rep(mu, each = n))^2 / vv) / sqrt(2 * pi * vv)
+      dim(B) <- c(n, 3L)
+      B <- pmax(B, 1e-300)
+      if (n == 1L) {
+        g <- pi_stat * B[1, ]
+        ll <- ll + log(sum(g))
+        post[a, ] <- g / sum(g)
+        pi_acc <- pi_acc + post[a, ]
+        num_mu <- num_mu + post[a, ] * yy
+        den_mu <- den_mu + post[a, ]
+        next
+      }
+      p <- exp(-diff(pp) / length_scale)          # A(d) in factored form
+      alpha <- matrix(0, n, 3L); cs <- numeric(n)
+      alpha[1, ] <- pi_stat * B[1, ]
+      cs[1] <- sum(alpha[1, ]); alpha[1, ] <- alpha[1, ] / cs[1]
+      for (t in 2:n) {
+        av <- alpha[t - 1, ]
+        pr <- p[t - 1] * av + (1 - p[t - 1]) * sum(av) * pi_stat
+        v <- pr * B[t, ]
+        cs[t] <- sum(v); alpha[t, ] <- v / cs[t]
+      }
+      bet <- matrix(0, n, 3L); bet[n, ] <- 1
+      for (t in (n - 1):1) {
+        v <- B[t + 1, ] * bet[t + 1, ]
+        bet[t, ] <- (p[t] * v + (1 - p[t]) * sum(pi_stat * v)) / cs[t + 1]
+      }
+      g <- alpha * bet
+      g <- g / rowSums(g)
+      post[a:b, ] <- g
+      ll <- ll + sum(log(cs))
+      pi_acc <- pi_acc + colSums(g)
+      num_mu <- num_mu + colSums(g * yy)
+      den_mu <- den_mu + colSums(g)
+    }
+    # M step: mu, then sigma with the measurement-error part held out
+    mu <- ifelse(den_mu > 0, num_mu / pmax(den_mu, 1e-12), mu)
+    mu[2] <- 0                       # neutral state is pinned at no change
+    num_s2 <- numeric(3); den_s2 <- numeric(3)
+    for (rg in runs) {
+      a <- rg[1]; b <- rg[2]
+      if (b < a) next
+      yy <- y[a:b]; ss <- se[a:b]
+      g <- post[a:b, , drop = FALSE]
+      n <- length(yy)
+      dev <- (yy - rep(mu, each = n))^2 - ss^2
+      dim(dev) <- c(n, 3L)
+      num_s2 <- num_s2 + colSums(g * dev)
+      den_s2 <- den_s2 + colSums(g)
+    }
+    sigma <- sqrt(pmax(num_s2 / pmax(den_s2, 1e-12), 1e-8))
+    pi_stat <- pi_acc / sum(pi_acc)
+    pi_stat <- pmax(pi_stat, 1e-6); pi_stat <- pi_stat / sum(pi_stat)
+    if (abs(ll - prev_ll) < tol * max(1, abs(prev_ll))) {
+      prev_ll <- ll
+      break
+    }
+    prev_ll <- ll
+  }
+  ord <- order(mu)
+  # Which column now holds the state pinned at mu = 0? Usually the middle one,
+  # but if every cluster effect falls on one side of zero the pinned state
+  # sorts to an end, and then the extreme columns are NOT hypo/hyper relative
+  # to no change. Callers must use this index instead of assuming the middle
+  # column; see call_blocks().
+  list(mu = mu[ord], sigma = sigma[ord], pi = pi_stat[ord],
+       length_scale = length_scale, posterior = post[, ord, drop = FALSE],
+       loglik = as.numeric(prev_ll), n_iter = as.integer(it),
+       neutral = as.integer(which(ord == 2L)))
+}
+
+#' Column labels for the three HSMM states, ordered by mu.
+#'
+#' `neutral` is fit_block_hsmm()$neutral, the column pinned at mu = 0 (1-based
+#' here). Normally that is the middle column and the labels are the familiar
+#' hypo/neutral/hyper. When all cluster effects fall on one side of zero the
+#' pinned state sorts to an end, so two states sit on the same side of no
+#' change and a bare direction would be ambiguous; those get a column suffix
+#' instead of being silently collapsed.
+state_labels <- function(neutral) {
+  neutral <- as.integer(neutral)
+  out <- character(3)
+  out[neutral] <- "neutral"
+  for (side in c("hypo", "hyper")) {
+    ks <- if (side == "hypo") which((1:3) < neutral) else which((1:3) > neutral)
+    for (k in ks)
+      out[k] <- if (length(ks) == 1L) side else sprintf("%s_s%d", side, k - 1L)
+  }
+  out
+}
+
+#' Maximal runs whose posterior for a non-neutral state exceeds `min_post`.
+#'
+#' The reported block posterior is the mean over the block's clusters, so a
+#' block carries a calibrated confidence rather than a binary permutation call.
+#'
+#' `neutral` is the column of `post` holding the state pinned at mu = 0, i.e.
+#' fit_block_hsmm()$neutral -- pass it. Columns are ordered by mu, so a state
+#' left of that column is hypomethylated relative to no change and one to the
+#' right is hypermethylated. Assuming the middle column is neutral mislabels
+#' every block when all cluster effects fall on one side of zero: the pinned
+#' state then sorts to an end and the middle column is a genuine effect state.
+call_blocks <- function(chrom, start, end, post, min_post = 0.80,
+                        min_clusters = 3L, neutral = 2L) {
+  n <- nrow(post)
+  neutral <- as.integer(neutral)
+  amax <- apply(post, 1, which.max)
+  state <- ifelse(apply(post, 1, max) >= min_post, amax, neutral)
+  out <- list()
+  i <- 1L
+  while (i <= n) {
+    s <- state[i]
+    if (s == neutral) { i <- i + 1L; next }
+    j <- i
+    while (j + 1L <= n && state[j + 1L] == s && chrom[j + 1L] == chrom[i])
+      j <- j + 1L
+    if ((j - i + 1L) >= min_clusters)
+      out[[length(out) + 1L]] <- data.frame(
+        chr = as.character(chrom[i]),
+        start = as.integer(start[i]),
+        end = as.integer(end[j]),
+        width = as.integer(end[j] - start[i] + 1),
+        n_clusters = as.integer(j - i + 1L),
+        direction = if (s < neutral) "hypo" else "hyper",
+        posterior = mean(post[i:j, s]),
+        stringsAsFactors = FALSE)
+    i <- j + 1L
+  }
+  if (!length(out))
+    return(data.frame(chr = character(0), start = integer(0), end = integer(0),
+                      width = integer(0), n_clusters = integer(0),
+                      direction = character(0), posterior = numeric(0),
+                      stringsAsFactors = FALSE))
+  do.call(rbind, out)
 }

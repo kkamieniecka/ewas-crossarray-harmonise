@@ -7,6 +7,19 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `bin/05_blocks_hsmm.R` and the block model in `bin/ewasml.R`
+  (`dist_transitions`, `fit_block_hsmm`, `call_blocks`, `state_labels`): the
+  §2.7 block finder ported to R, now the pipeline default (`--blocks_impl r`).
+  The Python implementation stays in the tree (`--blocks_impl python`). The
+  HSMM draws no random numbers, so the two agree exactly, not in distribution:
+  identical clusters, blocks and directions, posteriors to 5e-16.
+- `tests/test_stage05_equivalence.py` and `--stage-dir` in
+  `tests/gen_equivalence_fixtures.py`: a stage-level check that runs both
+  stage-05 drivers end to end and compares every output file, including the
+  case where an array arm is unidentified. Both defects below were in driver
+  code, out of reach of the function-level fixtures.
+- `state_labels()` in both cores, plus `state_labels` and `implementation` in
+  `hsmm_params.json`, so the two records compare field for field.
 - `bin/ewasml.R` and `bin/04_dmr_ml.R`: the §2.6 region finder ported to R,
   now the pipeline default (`--dmr_impl r`). The Python implementation stays
   in the tree and is selectable with `--dmr_impl python`.
@@ -25,6 +38,24 @@ All notable changes to this project are documented here. The format follows
 - `--var-method limma|mom` (R only) and `--cv_folds` as a Nextflow parameter.
 
 ### Fixed
+- Block direction was labelled by assuming the zero-effect HSMM state is the
+  middle of the three. When all cluster effects fall on one side of zero the
+  state pinned at mu = 0 sorts to an end, and the middle state is then a
+  genuine effect state reported as "no change". On a fixture forcing that
+  ordering the fix takes the call from 10 blocks to 22. Both implementations
+  now label relative to the identified neutral state and log which single
+  direction remains callable when it sorts to an end. `blocks_hsmm.csv` and
+  `openSea_cluster_effects.csv.gz` produced before this fix understate the
+  block count; see `docs/results-GSE237561.md`.
+- `hsmm_params.json` was not always valid JSON: a declined array arm or an
+  empty legacy fixed-width selection put a bare `NaN` (Python) or the string
+  `"NA"` (R) in the file, so no strict parser could read it and the two
+  implementations disagreed on how an absent value is spelled. Both now
+  serialise every non-finite value as `null`.
+- Stage 05's per-array check tested subject count alone before fitting an arm;
+  it now requires residual degrees of freedom after the within transform, the
+  same guard stage 04 uses, and declines the arm with a log line instead of
+  returning numbers from an unidentified fit.
 - Cross-validation, stability selection and per-array replication skipped
   subsets by subject count alone; a fold of mostly single-visit subjects has
   no within-subject information and crashed the stage. All three now test

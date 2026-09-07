@@ -97,7 +97,7 @@ the other one, which is how the agreement is re-checked on real data. See
 docs/design-rationale.md §7 for what the port cost and the three defects it
 exposed.
 
-### §2.7 — block finding → `bin/05_blocks_hsmm.py`
+### §2.7 — block finding → `bin/05_blocks_hsmm.R` (or `.py`)
 
 | minfi 2.7 | why it fails here | replacement |
 |---|---|---|
@@ -105,6 +105,13 @@ exposed.
 | `blockFinder`: ≥250 kb loess, threshold the curve | boundaries are resolution-limited (the paper says so) and carry no confidence measure | **3-state distance-aware HMM** (hypo/neutral/hyper) with `A(d) = e^{-d/L} I + (1-e^{-d/L}) 1π'`; emissions carry each cluster's own SE; posterior decoding gives soft boundaries and a per-block posterior |
 
 ## Validation run
+
+Stage 05 also ships in **both R and Python** with identical flags. The
+Baum-Welch fit uses no random numbers, so unlike stage 04 the two agree
+*exactly* rather than in distribution: same clusters, same blocks, same
+boundaries, posteriors to 5e-16 (`tests/test_stage05_equivalence.py` runs both
+drivers end to end and compares every output file). R is the default;
+`--blocks_impl python` runs the other one.
 
 Full record in [`docs/results-GSE237561.md`](docs/results-GSE237561.md); tables
 and logs under [`results/GSE237561/`](results/GSE237561/).
@@ -152,12 +159,14 @@ ewas-crossarray-harmonise/
 │   ├── 03_baseline_bumphunter.R  LEGACY §2.6/§2.7, same matrix
 │   ├── 04_dmr_ml.R               §2.6 replacement (default)
 │   ├── 04_dmr_ml.py              §2.6 replacement, Python twin (--dmr_impl python)
-│   ├── 05_blocks_hsmm.py         §2.7 replacement
+│   ├── 05_blocks_hsmm.R          §2.7 replacement (default)
+│   ├── 05_blocks_hsmm.py         §2.7 replacement, Python twin (--blocks_impl python)
 │   ├── 06_compare.py             controlled old-vs-new benchmark
 │   ├── ewasml.R                  numerical core, R
 │   └── ewasml.py                 numerical core, Python
 ├── tests/test_ewasml.py          numerical property checks (Python core)
 ├── tests/test_equivalence.R      R core must reproduce the Python core exactly
+├── tests/test_stage05_equivalence.py   the two stage-05 drivers, end to end
 ├── tests/gen_equivalence_fixtures.py   generates those inputs and references
 ├── galaxy/                       Galaxy wrappers, shared macros, .shed.yml
 ├── conf/                         conda specs + source-install script

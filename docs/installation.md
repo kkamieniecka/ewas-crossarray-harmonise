@@ -89,6 +89,11 @@ want to run only the region finder: the light dependency set installs from
 conda-forge plus one Bioconductor package, and `--var-method mom` drops limma
 too, at the cost of losing the default moderation.
 
+`05_blocks_hsmm.R` (the default block finder) needs the same light set minus
+`Matrix`: `r-base`, `optparse`, `jsonlite`, and `limma` only for the default
+variance moderation. It additionally needs the cross-array probe map that
+stage 01 writes, since it restricts to open-sea probes carried by both arrays.
+
 Memory: the region finder holds a few copies of the M-value matrix. Measured
 peak RSS is 1.78 GiB for R and 0.96 GiB for Python at 100k probes x 126
 samples, scaling linearly in probes — so roughly 7.5 GiB (R) or 4.1 GiB

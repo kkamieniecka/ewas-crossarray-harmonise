@@ -53,6 +53,11 @@ params.block_max_gap     = 1500
 params.block_rho_min     = 0.20
 params.block_length_scale = 250000
 params.block_min_post    = 0.80
+// Stage 05 likewise exists in both languages. Baum-Welch uses no RNG, so the
+// two produce byte-identical blocks rather than merely agreeing in
+// distribution; R is the default for the same reason as stage 04. Set
+// --blocks_impl python to audit the agreement on real data.
+params.blocks_impl       = 'r'       // 'r' | 'python'
 
 params.run_baseline = true
 params.naive_perm   = true           // also run the legacy permutation, to
@@ -203,8 +208,52 @@ process DMR_ML_PY {
     """
 }
 
+// Stage 05 arguments, shared by the two implementations so that an audit run
+// differs only in which interpreter is invoked.
+def blocksArgs() {
+    return [
+        "--in-dir .", "--out-dir blocks",
+        "--exposure ${params.exposure}",
+        "--exposure-scale ${params.exposure_scale}",
+        "--subject ${params.subject}", "--covars ${params.covars}",
+        "--max-gap ${params.block_max_gap}",
+        "--rho-min ${params.block_rho_min}",
+        "--length-scale ${params.block_length_scale}",
+        "--min-post ${params.block_min_post}",
+        "--fixed-collapse",
+        "--seed ${params.seed}",
+    ].join(' ')
+}
+
 process BLOCKS_HSMM {
     tag 'blocks-hsmm'
+    publishDir "${params.outdir}/blocks", mode: 'copy'
+    label 'r_heavy'
+
+    input:
+    path mval
+    path dims
+    path pheno
+    path anno
+    path probe_map
+
+    output:
+    path 'blocks/blocks_hsmm.csv',                emit: blocks
+    path 'blocks/openSea_cluster_effects.csv.gz', emit: clusters
+    path 'blocks/hsmm_params.json',               emit: cfg
+
+    script:
+    """
+    Rscript ${projectDir}/bin/05_blocks_hsmm.R ${blocksArgs()} \\
+        --probe-map ${probe_map}
+    """
+}
+
+// The Python implementation of stage 05, kept so the agreement can be
+// re-checked on real data (--blocks_impl python). Output names match, so
+// COMPARE and the report do not care which one ran.
+process BLOCKS_HSMM_PY {
+    tag 'blocks-hsmm-py'
     publishDir "${params.outdir}/blocks", mode: 'copy'
     label 'py_heavy'
 
@@ -222,14 +271,8 @@ process BLOCKS_HSMM {
 
     script:
     """
-    python ${projectDir}/bin/05_blocks_hsmm.py \\
-        --in-dir . --probe-map ${probe_map} --out-dir blocks \\
-        --exposure ${params.exposure} --exposure-scale ${params.exposure_scale} \\
-        --subject ${params.subject} --covars ${params.covars} \\
-        --max-gap ${params.block_max_gap} --rho-min ${params.block_rho_min} \\
-        --length-scale ${params.block_length_scale} \\
-        --min-post ${params.block_min_post} --fixed-collapse \\
-        --seed ${params.seed}
+    python ${projectDir}/bin/05_blocks_hsmm.py ${blocksArgs()} \\
+        --probe-map ${probe_map}
     """
 }
 
@@ -263,6 +306,10 @@ workflow {
     if( !(dmr_impl in ['r', 'python']) )
         exit 1, "ewas-harmonise: --dmr_impl must be 'r' or 'python', got '${params.dmr_impl}'"
 
+    def blocks_impl = "${params.blocks_impl}".toLowerCase()
+    if( !(blocks_impl in ['r', 'python']) )
+        exit 1, "ewas-harmonise: --blocks_impl must be 'r' or 'python', got '${params.blocks_impl}'"
+
     HARMONISE(sheet, idats)
     PROBE_MODEL(HARMONISE.out.rds)
     if( dmr_impl == 'r' )
@@ -272,13 +319,18 @@ workflow {
         DMR_ML_PY(HARMONISE.out.mval, HARMONISE.out.dims,
                   HARMONISE.out.pheno, HARMONISE.out.anno)
     dmr_out = dmr_impl == 'r' ? DMR_ML.out : DMR_ML_PY.out
-    BLOCKS_HSMM(HARMONISE.out.mval, HARMONISE.out.dims,
-                HARMONISE.out.pheno, HARMONISE.out.anno, pmap)
+    if( blocks_impl == 'r' )
+        BLOCKS_HSMM(HARMONISE.out.mval, HARMONISE.out.dims,
+                    HARMONISE.out.pheno, HARMONISE.out.anno, pmap)
+    else
+        BLOCKS_HSMM_PY(HARMONISE.out.mval, HARMONISE.out.dims,
+                       HARMONISE.out.pheno, HARMONISE.out.anno, pmap)
+    blocks_out = blocks_impl == 'r' ? BLOCKS_HSMM.out : BLOCKS_HSMM_PY.out
 
     if (params.run_baseline) {
         BASELINE(HARMONISE.out.rds)
         COMPARE(dmr_out.regions.mix(dmr_out.cfg).collect(),
-                BLOCKS_HSMM.out.blocks.mix(BLOCKS_HSMM.out.cfg).collect(),
+                blocks_out.blocks.mix(blocks_out.cfg).collect(),
                 BASELINE.out.all.collect())
     }
 }

@@ -90,11 +90,18 @@ implementations reported 8 and 1 significant regions from indistinguishable
 nulls. Treat that log line as an instruction to raise `--n-perm` (1000 or
 more for publication) rather than as a result.
 
-The Nextflow parameters that choose the implementation are `--dmr_impl`
+The Nextflow parameters that choose the implementation are `--blocks_impl`,
+`--dmr_impl`
 (`r` | `python`) and `--var_method` (`limma` | `mom`); the Galaxy wrapper runs
 R only, and exposes the moderation choice as *Variance moderation*.
 
-## Block detection, §2.7 replacement (`05_blocks_hsmm.py`)
+## Block detection, §2.7 replacement (`05_blocks_hsmm.R`, `05_blocks_hsmm.py`)
+
+Two implementations, identical flags. Baum-Welch from fixed starting values
+uses no RNG, so the two agree exactly — identical clusters, blocks and
+directions, posteriors to 5e-16, log-likelihood to 2e-15 relative
+(`tests/test_stage05_equivalence.py`). R is the default; `--blocks_impl python`
+runs the Python one, which is how the agreement is re-checked on real data.
 
 | param | default | notes |
 |---|---|---|
@@ -104,6 +111,7 @@ R only, and exposes the moderation choice as *Variance moderation*.
 | `--min-post` | `0.80` | posterior threshold for calling a block |
 | `--min-clusters` | `3` | minimum clusters per block |
 | `--fixed-collapse` | off | also report what the legacy fixed 500/1500 bp collapse would have produced on the same probes |
+| `--array-col` | `Array_Type` | column splitting the per-array check. An arm with no residual degrees of freedom after the within transform is declined rather than fitted, and `cross_array_r` is then `null` |
 
 ## Legacy baseline (`03_baseline_bumphunter.R`)
 

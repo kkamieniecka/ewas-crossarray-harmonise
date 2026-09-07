@@ -249,3 +249,58 @@ Point 3 is a property of the method, not of the port: any permutation FWER on
 correlated regions has it. It was invisible until two implementations
 disagreed. Publication runs should use `--n-perm 1000` or more and read the
 MCSE column before treating a region near the threshold as significant.
+
+### §2.7 followed, and being deterministic it can be held to a stricter standard
+
+The block finder was ported next (`bin/ewasml.R`, `bin/05_blocks_hsmm.R`; R is
+the default, `--blocks_impl python` runs the Python one). Its numerical
+dependency surface is a group-wise mean, a distance-weighted transition matrix
+and a Baum-Welch fit — again nothing that needs Python.
+
+Stage 04 can only be compared in distribution, because the permutation null
+and the stability subsamples come from two different pseudo-random generators.
+Stage 05 has no such limit: the HSMM is fitted from fixed starting values and
+draws no random numbers, so it is held to exact agreement end to end, output
+file by output file (`tests/test_stage05_equivalence.py`, which runs both
+drivers rather than only the core):
+
+| quantity | agreement |
+|---|---|
+| open-sea cluster ids, chr, start, end, probe counts | exact |
+| cluster effect, SE, z, per-array effects | 7e-15 |
+| block geometry, cluster counts, direction | exact |
+| block posterior | 5e-16 |
+| state means, sd, stationary distribution | 1e-16 |
+| iterations to convergence, identified neutral state | exact |
+| log-likelihood | 2e-15 relative |
+| cross-array r, sign concordance | 3e-16 |
+
+Two defects came out of this port, and both lived in *driver* code rather than
+in the numerical core, which is why the function-level fixtures had not found
+them:
+
+1. **A real effect state was reported as "no change".** Direction was labelled
+   by assuming the zero-effect state is the middle of the three. When every
+   cluster effect falls on one side of zero — which happens whenever the
+   exposure moves methylation in one direction at the scale being fitted — the
+   state pinned at mu = 0 sorts to an end, and the middle state is then a
+   genuine effect state. On a fixture built to force that ordering, the
+   labelling fix took the call from 10 blocks to 22: twelve blocks had been
+   silently classified as neutral. Both implementations now label relative to
+   the identified neutral column (`state_labels`) and log which single
+   direction remains callable when neutral sorts to an end.
+2. **The parameters record was not always JSON.** With an array arm declined
+   for lack of within-subject information, or with no legacy fixed-width units
+   surviving the filter, non-finite values reached `hsmm_params.json` — as a
+   bare `NaN` from Python, as the string `"NA"` from R. Neither file could be
+   read by a strict parser, and the two disagreed on how an absent value is
+   spelled. Both drivers now serialise every non-finite value as `null`.
+
+The identification guard added to stage 04 is applied here too: an array arm
+is fitted only if the within transform leaves residual degrees of freedom, not
+merely three subjects. On the CI fixture the 450K arm fails that test and is
+declined with a log line, and `cross_array_r` is `null` rather than a number
+computed from an unidentified fit.
+
+R costs about 9x the Python's wall clock on the CI fixture (0.9 s vs 0.1 s),
+the same order as the ratio measured for stage 04.

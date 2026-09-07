@@ -210,6 +210,131 @@ for (k in unique(fold_py$k)) {
 report("fold_assign identical splits", mismatch, 0,
        sprintf("[k = %s]", paste(unique(fold_py$k), collapse = ",")))
 
+## ---- 9. block HSMM, stage 05 --------------------------------------------
+## No RNG anywhere in this fit, so every quantity is comparable -- including
+## the called blocks, which for stage 04 could only be compared on replayed
+## draws.
+hin <- read.csv(F_("hsmm_input.csv"), stringsAsFactors = FALSE,
+                colClasses = c(chr = "character"))
+tr <- read.csv(F_("transitions.csv"))
+A_r <- dist_transitions(tr$d, c(0.05, 0.90, 0.05), 250000)
+A_py <- as.matrix(tr[, -1])
+A_flat <- matrix(NA_real_, nrow(tr), 9L)
+for (i in 1:3) for (j in 1:3) A_flat[, (i - 1L) * 3L + j] <- A_r[, i, j]
+report("dist_transitions A(d)", maxad(A_flat, A_py), 1e-15,
+       sprintf("[d = %s]", paste(format(tr$d, scientific = TRUE, digits = 1),
+                                 collapse = ",")))
+report("A(d) rows sum to 1", max(abs(rowSums(A_flat[, c(1, 2, 3)]) - 1)), 1e-15)
+
+t0 <- proc.time()[["elapsed"]]
+hs <- fit_block_hsmm(hin$y, hin$se, hin$mid, hin$chr,
+                     length_scale = ref$hsmm_length_scale, seed = 1)
+t_hsmm <- proc.time()[["elapsed"]] - t0
+post_py <- read.csv(F_("hsmm_posterior.csv"))
+report("fit_block_hsmm iterations to convergence",
+       abs(hs$n_iter - ref$hsmm_n_iter), 0,
+       sprintf("[%d iterations, %d clusters, %.1fs]", hs$n_iter,
+               ref$hsmm_n_clusters, t_hsmm))
+report("fit_block_hsmm state means", maxad(hs$mu, ref$hsmm_mu), 1e-9,
+       sprintf("[hypo %.4f, hyper %.4f]", hs$mu[1], hs$mu[3]))
+report("fit_block_hsmm state sd", maxad(hs$sigma, ref$hsmm_sigma), 1e-9)
+report("fit_block_hsmm stationary distribution", maxad(hs$pi, ref$hsmm_pi), 1e-9)
+report("fit_block_hsmm log-likelihood",
+       abs(hs$loglik - ref$hsmm_loglik) / abs(ref$hsmm_loglik), 1e-12,
+       sprintf("[%.4f]", hs$loglik))
+report("fit_block_hsmm posterior", maxad(as.matrix(post_py), hs$posterior), 1e-9)
+report("posterior rows sum to 1", max(abs(rowSums(hs$posterior) - 1)), 1e-12)
+report("state assignment identical",
+       sum(apply(hs$posterior, 1, which.max) !=
+           apply(as.matrix(post_py), 1, which.max)), 0,
+       sprintf("[%d clusters]", nrow(hs$posterior)))
+
+blk_py <- read.csv(F_("blocks.csv"), stringsAsFactors = FALSE,
+                   colClasses = c(chr = "character"))
+report("fit_block_hsmm neutral column", abs(hs$neutral - (ref$hsmm_neutral + 1L)), 0,
+       sprintf("[R %d == Python %d, 1- vs 0-based]", hs$neutral, ref$hsmm_neutral))
+blk <- call_blocks(hin$chr, hin$start, hin$end, hs$posterior,
+                   min_post = 0.80, min_clusters = 3L, neutral = hs$neutral)
+report("call_blocks block count", abs(nrow(blk) - ref$n_blocks), 0,
+       sprintf("[%d blocks]", nrow(blk)))
+if (nrow(blk) == nrow(blk_py) && nrow(blk) > 0L) {
+  report("call_blocks boundaries and widths",
+         max(abs(blk$start - blk_py$start), abs(blk$end - blk_py$end),
+             abs(blk$width - blk_py$width)), 0)
+  report("call_blocks cluster counts, chromosome and direction",
+         sum(blk$n_clusters != blk_py$n_clusters | blk$chr != blk_py$chr |
+             blk$direction != blk_py$direction), 0,
+         sprintf("[%s]", paste(table(blk$direction), names(table(blk$direction)),
+                               collapse = ", ")))
+  report("call_blocks block posterior",
+         maxad(blk$posterior, blk_py$posterior), 1e-9,
+         sprintf("[min %.4f]", min(blk$posterior)))
+}
+
+## call_blocks decision rules, which no reference can pin down.
+## NB: the block COUNT is not monotone in min_post -- a stricter threshold can
+## drop one cluster out of a long run and split it into two reported blocks.
+## What is monotone is the number of clusters called into blocks.
+pp <- as.matrix(post_py)
+strict <- call_blocks(hin$chr, hin$start, hin$end, pp, min_post = 0.99,
+                      min_clusters = 3L, neutral = hs$neutral)
+report("raising min_post cannot call more clusters into blocks",
+       max(0, sum(strict$n_clusters) - sum(blk_py$n_clusters)), 0,
+       sprintf("[%d clusters at 0.99 vs %d at 0.80, in %d vs %d blocks]",
+               sum(strict$n_clusters), sum(blk_py$n_clusters),
+               nrow(strict), nrow(blk_py)))
+report("raising min_clusters cannot add blocks",
+       max(0, nrow(call_blocks(hin$chr, hin$start, hin$end, pp,
+                               min_post = 0.80, min_clusters = 10L,
+                               neutral = hs$neutral)) - nrow(blk_py)), 0)
+report("every block lies on one chromosome",
+       sum(vapply(seq_len(nrow(blk)), function(i)
+         as.numeric(length(unique(hin$chr[hin$chr == blk$chr[i] &
+                                          hin$start >= blk$start[i] &
+                                          hin$end <= blk$end[i]])) != 1L),
+         numeric(1))), 0)
+report("block posterior is the mean over its own clusters",
+       max(vapply(seq_len(nrow(blk)), function(i) {
+         k <- which(hin$chr == blk$chr[i] & hin$start >= blk$start[i] &
+                    hin$end <= blk$end[i])
+         st <- if (blk$direction[i] == "hypo") 1L else 3L
+         abs(mean(hs$posterior[k, st]) - blk$posterior[i])
+       }, numeric(1))), 1e-12)
+
+## ---- 10. degenerate state ordering ---------------------------------------
+## Every cluster effect on one side of zero, as in the real GSE237561 fit. The
+## state pinned at mu = 0 sorts to an end, so a caller that assumes the middle
+## column is neutral both mislabels the pinned state as directional and treats
+## a genuine effect state as no change.
+hs2 <- fit_block_hsmm(abs(hin$y) + 0.05, hin$se, hin$mid, hin$chr,
+                      length_scale = ref$hsmm_length_scale)
+post2_py <- as.matrix(read.csv(F_("hsmm_posterior_pos.csv")))
+report("degenerate fit state means", maxad(hs2$mu, ref$hsmm_pos_mu), 1e-9,
+       sprintf("[%s]", paste(sprintf("%.4f", hs2$mu), collapse = ", ")))
+report("degenerate fit posterior", maxad(hs2$posterior, post2_py), 1e-9)
+report("pinned neutral state sorts to an end",
+       abs(hs2$neutral - (ref$hsmm_pos_neutral + 1L)), 0,
+       sprintf("[column %d of 3, not the middle]", hs2$neutral))
+blk2_py <- read.csv(F_("blocks_pos.csv"), stringsAsFactors = FALSE,
+                    colClasses = c(chr = "character"))
+blk2 <- call_blocks(hin$chr, hin$start, hin$end, hs2$posterior,
+                    min_post = 0.80, min_clusters = 3L, neutral = hs2$neutral)
+report("degenerate case block count",
+       abs(nrow(blk2) - ref$hsmm_pos_n_blocks), 0,
+       sprintf("[%d blocks; assuming the middle column reports %d]", nrow(blk2),
+               nrow(call_blocks(hin$chr, hin$start, hin$end, hs2$posterior,
+                                min_post = 0.80, min_clusters = 3L,
+                                neutral = 2L))))
+report("degenerate case directions identical",
+       as.numeric(!identical(sort(unique(blk2$direction)),
+                             sort(as.character(ref$hsmm_pos_directions)))), 0,
+       sprintf("[%s]", paste(sort(unique(blk2$direction)), collapse = ",")))
+report("no state is called hypo when none is below neutral",
+       sum(blk2$direction == "hypo"), 0)
+if (nrow(blk2) == nrow(blk2_py) && nrow(blk2) > 0L)
+  report("degenerate case boundaries",
+         max(abs(blk2$start - blk2_py$start), abs(blk2$end - blk2_py$end)), 0)
+
 cat(sprintf("\n%s: %d check(s) failed\n",
             if (fails == 0L) "PASS" else "FAIL", fails))
 quit(status = if (fails == 0L) 0L else 1L)
