@@ -227,12 +227,6 @@ workflow {
     }
 }
 
-workflow.onComplete {
-    log.info """
-    ewas-harmonise finished
-      status    : ${workflow.success ? 'OK' : 'FAILED'}
-      duration  : ${workflow.duration}
-      outdir    : ${params.outdir}
-      revision  : ${workflow.revision ?: 'n/a'}  commit: ${workflow.commitId ?: 'n/a'}
-    """.stripIndent()
-}
+// The run summary handler lives in nextflow.config: a top-level
+// `workflow.onComplete { }` statement here is rejected by the strict script
+// parser ("statements cannot be mixed with script declarations").
