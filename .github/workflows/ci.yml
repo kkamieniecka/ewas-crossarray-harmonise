@@ -62,9 +62,13 @@ jobs:
           sudo mv nextflow /usr/local/bin/
       - name: every profile resolves
         run: |
+          fail=
           for p in conda docker singularity test; do
-            echo "--- profile: $p"
-            nextflow config . -profile $p > /dev/null || exit 1
+            if ! out=$(nextflow config . -profile "$p" 2>&1 >/dev/null); then
+              echo "::error title=profile $p::${out//$'\n'/%0A}"
+              fail=1
+            fi
           done
+          [ -z "$fail" ]
       - name: workflow parses
         run: nextflow run . --help
