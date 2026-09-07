@@ -1,0 +1,92 @@
+<tool id="ewas_harmonise" name="EWAS harmonise arrays" version="@TOOL_VERSION@" profile="@PROFILE@">
+    <description>combine Illumina 450K and EPIC IDATs into one QC'd matrix without mixing probe chemistry</description>
+    <macros>
+        <import>macros.xml</import>
+    </macros>
+    <expand macro="requirements_r"/>
+    <command detect_errors="exit_code"><![CDATA[
+mkdir -p idat out &&
+## Galaxy stores each IDAT under a numeric dataset id, but minfi resolves
+## samples through the Basename column of the sheet, so the original
+## _Grn/_Red.idat.gz names have to be restored.
+#for $pair in $idats
+    ln -s '$pair' 'idat/${pair.element_identifier}' &&
+#end for
+Rscript '$__tool_directory__/../bin/01_harmonise.R'
+    --sheet '$sheet'
+    --idat_dir idat
+    --out_dir out
+    --detp $qc.detp
+    --detp_frac $qc.detp_frac
+    --drop_sex $qc.drop_sex
+    --bmiq $bmiq
+    --keep_gset TRUE
+    --seed $seed
+    ]]></command>
+    <inputs>
+        <param name="sheet" type="data" format="csv,tabular" label="Sample sheet"
+               help="minfi-format sheet plus the longitudinal columns: Sample_Name, Basename, Sentrix_ID, Sentrix_Position, Array_Type (450K or EPIC), Subject_ID, visit, exposure and any time-varying covariates."/>
+        <param name="idats" type="data_collection" collection_type="list" format="binary"
+               label="IDAT collection"
+               help="A list containing both the _Grn and _Red IDAT of every sample, from both arrays. Element identifiers must be the original Illumina filenames."/>
+
+        <section name="qc" title="Quality control (performed in each array's NATIVE probe space)" expanded="true">
+            <param name="detp" type="float" value="0.01" min="0" max="1"
+                   label="Detection p-value threshold"/>
+            <param name="detp_frac" type="float" value="0.05" min="0" max="1"
+                   label="Maximum fraction of failed probes per sample"/>
+            <param name="drop_sex" type="boolean" checked="true" truevalue="TRUE" falsevalue="FALSE"
+                   label="Drop sex chromosomes"
+                   help="Sex chromosomes need a sex-stratified model; the downstream stages assume autosomes."/>
+        </section>
+
+        <param name="bmiq" type="boolean" checked="false" truevalue="TRUE" falsevalue="FALSE"
+               label="Apply BMIQ type-I/II correction"
+               help="Off by default and normally unnecessary: for all 454,181 probes the two arrays share, Infinium design type, probe sequence and colour channel are 100% concordant, so name-level intersection mixes no chemistry."/>
+        <param name="seed" type="integer" value="20240717" label="Random seed"/>
+    </inputs>
+    <outputs>
+        <data name="rds" format="rdata" label="${tool.name} on ${on_string}: harmonised GenomicRatioSet" from_work_dir="out/harmonised.rds"/>
+        <data name="mval" format="binary" label="${tool.name} on ${on_string}: M-value matrix (f64)" from_work_dir="out/mval.f64"/>
+        <data name="dims" format="json" label="${tool.name} on ${on_string}: matrix header" from_work_dir="out/mval_dims.json"/>
+        <data name="pheno" format="csv" label="${tool.name} on ${on_string}: phenotypes used" from_work_dir="out/pheno_used.csv"/>
+        <data name="anno" format="csv" label="${tool.name} on ${on_string}: probe annotation" from_work_dir="out/probe_annotation.csv"/>
+        <data name="qc" format="csv" label="${tool.name} on ${on_string}: sample QC" from_work_dir="out/qc_samples.csv"/>
+        <data name="filt" format="csv" label="${tool.name} on ${on_string}: probe filter audit" from_work_dir="out/probe_filter.csv"/>
+    </outputs>
+    <help><![CDATA[
+**What it does**
+
+Reads 450K and EPIC IDATs, each with its **own** manifest, and produces a
+single harmonised matrix suitable for a joint longitudinal analysis.
+
+**Order of operations, and why it matters**
+
+Detection p-values, sample QC and background/dye correction are all computed in
+each array's **native probe space, before any intersection**. Doing QC after
+merging would judge every EPIC sample on a 450K-shaped probe set and would
+compute background from a probe panel the sample was never measured on.
+Merging happens only through ``minfi::combineArrays()``.
+
+**Where the intersection happens**
+
+On CpG **name**, with the manifest resolving bead addresses per array. Measured
+on ``GPL13534`` and ``GPL21145``: 454,181 CpGs are shared, and for every one of
+them the bead ``AddressA_ID`` differs between manifests, so an address-level
+join returns nothing. For those same 454,181 probes the Infinium design type,
+both probe sequences, colour channel and hg19 position are 100% concordant.
+
+So **harmonisation costs probe content, not chemistry**: 413,745 EPIC-only and
+31,396 450K-only probes are dropped, but no shared probe changes design type,
+and no type-I/II re-typing correction is needed. That is why BMIQ is optional
+here rather than mandatory.
+
+**Outputs**
+
+Besides the ``GenomicRatioSet`` (which the legacy bump-hunting and block-finding
+tools require), the tool writes a plain column-major float64 dump of the M-value
+matrix with a JSON header. The downstream region and block tools read that
+directly, so no stage needs an R-to-Python bridge.
+    ]]></help>
+    <expand macro="citations_common"/>
+</tool>

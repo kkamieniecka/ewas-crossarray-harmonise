@@ -1,0 +1,59 @@
+<macros>
+    <token name="@TOOL_VERSION@">0.1.0</token>
+    <token name="@PROFILE@">23.0</token>
+
+    <xml name="requirements_r">
+        <requirements>
+            <requirement type="package" version="4.4">r-base</requirement>
+            <requirement type="package" version="1.48.0">bioconductor-minfi</requirement>
+            <requirement type="package" version="1.48.0">bioconductor-bumphunter</requirement>
+            <requirement type="package" version="3.62.0">bioconductor-limma</requirement>
+            <requirement type="package" version="1.16.4">r-data.table</requirement>
+            <requirement type="package" version="1.7.5">r-optparse</requirement>
+            <requirement type="package" version="1.8.9">r-jsonlite</requirement>
+        </requirements>
+    </xml>
+
+    <xml name="requirements_py">
+        <requirements>
+            <requirement type="package" version="3.11">python</requirement>
+            <requirement type="package" version="1.26">numpy</requirement>
+            <requirement type="package" version="2.2">pandas</requirement>
+            <requirement type="package" version="1.13">scipy</requirement>
+            <requirement type="package" version="3.8">matplotlib</requirement>
+        </requirements>
+    </xml>
+
+    <!-- The longitudinal design is the same for every downstream tool, so the
+         exposure / subject / covariate inputs are declared once. -->
+    <xml name="design_inputs">
+        <param name="exposure" type="text" value="days_on_clozapine" label="Exposure column"
+               help="Numeric, TIME-VARYING column in the phenotype table. A time-invariant column cannot be estimated by a within-subject model."/>
+        <param name="exposure_scale" type="float" value="100" min="1e-6"
+               label="Exposure scale" help="The exposure is divided by this, so effects read per unit. 100 gives effect per 100 days."/>
+        <param name="subject" type="text" value="Subject_ID" label="Subject identifier column"
+               help="Repeated measures are grouped by this. Subject intercepts absorb array type, cohort and chip when those are nested within subject."/>
+        <param name="covars" type="text" value="smoking_score,cd8t,cd4t,bcell,gran,mono,nk"
+               label="Time-varying covariates (comma separated)"
+               help="Only time-varying covariates are usable. Age and sex are constant within a subject and are removed exactly by the within transform, so listing them has no effect."/>
+    </xml>
+
+    <xml name="citations_common">
+        <citations>
+            <citation type="doi">10.1101/553784</citation>
+            <citation type="doi">10.1093/bioinformatics/btu049</citation>
+            <citation type="doi">10.1093/nar/gkl1032</citation>
+        </citations>
+    </xml>
+
+    <token name="@DESIGN_NOTE@"><![CDATA[
+**Why a within-subject model**
+
+In a two-cohort 450K + EPIC study every Sentrix chip is nested inside one
+array type, so array type is perfectly collinear with cohort and with chip. No
+design matrix can separate them. What *is* estimable is the within-subject
+change over the exposure, because each subject sits entirely on one array: the
+subject intercept absorbs array, cohort and chip together, exactly, and the
+exposure coefficient is identified from repeated visits of the same person.
+    ]]></token>
+</macros>

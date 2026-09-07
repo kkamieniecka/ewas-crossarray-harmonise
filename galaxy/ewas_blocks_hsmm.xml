@@ -1,0 +1,137 @@
+<tool id="ewas_blocks_hsmm" name="EWAS blocks (distance-aware HSMM)" version="@TOOL_VERSION@" profile="@PROFILE@">
+    <description>large-scale methylation blocks with calibrated boundaries, replacing cpgCollapse + blockFinder</description>
+    <macros>
+        <import>macros.xml</import>
+    </macros>
+    <expand macro="requirements_py"/>
+    <command detect_errors="exit_code"><![CDATA[
+mkdir -p in out &&
+ln -s '$mval' in/mval.f64 &&
+ln -s '$dims' in/mval_dims.json &&
+ln -s '$pheno' in/pheno_used.csv &&
+ln -s '$anno' in/probe_annotation.csv &&
+python '$__tool_directory__/../bin/05_blocks_hsmm.py'
+    --in-dir in
+    --probe-map '$probe_map'
+    --out-dir out
+    --exposure '$design.exposure'
+    --exposure-scale $design.exposure_scale
+    --subject '$design.subject'
+    --covars '$design.covars'
+    --max-gap $cluster.max_gap
+    --rho-min $cluster.rho_min
+    --length-scale $hsmm.length_scale
+    --min-post $hsmm.min_post
+    --min-clusters $hsmm.min_clusters
+    --seed $hsmm.seed
+    #if $fixed_collapse
+        --fixed-collapse
+    #end if
+    ]]></command>
+    <inputs>
+        <param name="mval" type="data" format="binary" label="Harmonised M-value matrix (mval.f64)"/>
+        <param name="dims" type="data" format="json" label="Matrix header (mval_dims.json)"/>
+        <param name="pheno" type="data" format="csv" label="Phenotype table (pheno_used.csv)"/>
+        <param name="anno" type="data" format="csv" label="Probe annotation (probe_annotation.csv)"/>
+        <param name="probe_map" type="data" format="csv,tabular" label="Cross-array probe map"
+               help="crossarray_probe_map.csv.gz from the harmonisation tool. Supplies each probe's array status and island context, so blocks are restricted to open-sea probes that BOTH arrays carry."/>
+
+        <section name="design" title="Longitudinal design" expanded="true">
+            <expand macro="design_inputs"/>
+        </section>
+
+        <section name="cluster" title="Open-sea clustering (replaces the fixed 500 bp / 1500 bp collapse)" expanded="false">
+            <param name="max_gap" type="integer" value="1500" min="1"
+                   label="Maximum genomic gap (bp) considered for joining"/>
+            <param name="rho_min" type="float" value="0.20" min="0" max="1"
+                   label="Minimum within-subject co-methylation to join two open-sea probes"/>
+        </section>
+
+        <section name="hsmm" title="Block model" expanded="true">
+            <param name="length_scale" type="float" value="250000" min="1"
+                   label="Distance length scale L (bp)"
+                   help="Transition probabilities are A(d) = exp(-d/L) I + (1 - exp(-d/L)) 1 pi'. The 250 kb default matches the loess window it replaces, so the two are comparable."/>
+            <param name="min_post" type="float" value="0.80" min="0.5" max="1"
+                   label="Minimum posterior to include a cluster in a block"
+                   help="Blocks are decoded from the state posterior, so this is a probability, not an effect-size cutoff on a smooth curve."/>
+            <param name="min_clusters" type="integer" value="3" min="1"
+                   label="Minimum clusters per block"/>
+            <param name="seed" type="integer" value="1" label="Random seed"/>
+        </section>
+
+        <param name="fixed_collapse" type="boolean" checked="true" truevalue="true" falsevalue=""
+               label="Also report the legacy fixed-width collapse"
+               help="Reports how many units, and of what width, the 500 bp gap / 1500 bp width rule would have produced on the same probes, so the change in the unit of analysis is visible."/>
+    </inputs>
+    <outputs>
+        <data name="blocks" format="csv" label="${tool.name} on ${on_string}: blocks" from_work_dir="out/blocks_hsmm.csv"/>
+        <data name="clusters" format="csv" label="${tool.name} on ${on_string}: open-sea cluster effects" from_work_dir="out/openSea_cluster_effects.csv.gz"/>
+        <data name="cfg" format="json" label="${tool.name} on ${on_string}: fitted model" from_work_dir="out/hsmm_params.json"/>
+    </outputs>
+    <tests>
+        <test expect_num_outputs="3">
+            <param name="mval" value="test_mval.f64" ftype="binary"/>
+            <param name="dims" value="test_mval_dims.json" ftype="json"/>
+            <param name="pheno" value="test_pheno.csv" ftype="csv"/>
+            <param name="anno" value="test_anno.csv" ftype="csv"/>
+            <param name="probe_map" value="test_probe_map.csv" ftype="csv"/>
+            <section name="design">
+                <param name="exposure" value="exposure"/>
+                <param name="exposure_scale" value="1"/>
+                <param name="subject" value="subject"/>
+                <param name="covars" value=""/>
+            </section>
+            <output name="cfg">
+                <assert_contents>
+                    <has_text text="length_scale"/>
+                    <has_text text="n_blocks"/>
+                </assert_contents>
+            </output>
+        </test>
+    </tests>
+    <help><![CDATA[
+**What it does**
+
+Finds large-scale methylation blocks -- the megabase-scale hypo- and
+hypermethylated domains -- in a harmonised 450K + EPIC longitudinal study. It
+replaces section 2.7 of the minfi/EWASGalaxy stack: ``cpgCollapse`` with a
+fixed 500 bp gap / 1500 bp width rule, followed by ``blockFinder`` bump hunting
+with a 250 kb loess window.
+
+**Why the original is not valid here**
+
+Block finding runs on open-sea probes, and open sea is precisely the content
+that differs most between the two arrays: about 78% of EPIC-only probes are
+open sea against 36% of the probes both arrays share. A fixed-width collapse
+therefore builds units whose composition depends on which array a sample came
+from, which is exactly what a harmonisation pipeline must not do. Separately,
+the block boundary is wherever a wide loess curve crosses a cutoff; the minfi
+paper itself notes this makes boundaries resolution-limited, and it gives no
+measure of confidence in any particular boundary.
+
+**What this tool does instead**
+
+Clusters are formed where open-sea probes are both close and empirically
+co-methylated, restricted to probes both arrays carry, so a cluster is a
+property of the locus. Each cluster is collapsed to its mean profile and given
+a within-subject effect with its own standard error. A three-state hidden
+Markov model (hypo / neutral / hyper) then runs along the chromosome with a
+transition matrix that is an explicit function of genomic distance, so that two
+clusters 2 kb apart are strongly coupled and two clusters 5 Mb apart are
+effectively independent. Posterior decoding returns soft block boundaries with
+a per-block posterior probability, and the emission model uses each cluster's
+own standard error, so a noisy cluster cannot pull a boundary the way an
+unweighted smooth curve can.
+
+@DESIGN_NOTE@
+
+**Outputs**
+
+A block table with per-block posterior, span, number of constituent clusters
+and direction; the per-cluster effect table with state posteriors; and the
+fitted model (state means, state standard deviations, stationary distribution,
+length scale, log-likelihood) plus the cross-array agreement of block effects
+between the two cohorts.
+    ]]></help>
+    <expand macro="citations_common"/>
+</tool>

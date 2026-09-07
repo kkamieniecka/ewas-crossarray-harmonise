@@ -1,0 +1,21 @@
+name: ewas_crossarray_harmonise
+owner: kkamieniecka
+description: >-
+  Cross-array harmonisation and design-aware region and block detection for
+  longitudinal EWAS combining Illumina 450K and MethylationEPIC data.
+long_description: >-
+  Extends the EWASGalaxy tool suite with a harmonisation tool that keeps each
+  array in its native probe space until QC is complete, and with replacements
+  for the fixed-gap region finding and fixed-width block finding of the minfi
+  workflow. The replacements identify the exposure effect within subject,
+  permute only among visits of the same subject, and cross-validate by holding
+  out whole subjects.
+homepage_url: https://github.com/kkamieniecka/ewas-crossarray-harmonise
+remote_repository_url: https://github.com/kkamieniecka/ewas-crossarray-harmonise
+type: unrestricted
+categories:
+  - Epigenetics
+  - Statistics
+auto_tool_repositories:
+  name_template: "{{ tool_id }}"
+  description_template: "{{ tool_name }} for longitudinal cross-array EWAS"

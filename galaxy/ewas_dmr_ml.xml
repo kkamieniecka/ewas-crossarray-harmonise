@@ -1,0 +1,165 @@
+<tool id="ewas_dmr_ml" name="EWAS DMR (ML region finder)" version="@TOOL_VERSION@" profile="@PROFILE@">
+    <description>differentially methylated regions for cross-array longitudinal EWAS, replacing bump hunting</description>
+    <macros>
+        <import>macros.xml</import>
+    </macros>
+    <expand macro="requirements_py"/>
+    <command detect_errors="exit_code"><![CDATA[
+mkdir -p in out &&
+ln -s '$mval' in/mval.f64 &&
+ln -s '$dims' in/mval_dims.json &&
+ln -s '$pheno' in/pheno_used.csv &&
+ln -s '$anno' in/probe_annotation.csv &&
+python '$__tool_directory__/../bin/04_dmr_ml.py'
+    --in-dir in
+    --out-dir out
+    --exposure '$design.exposure'
+    --exposure-scale $design.exposure_scale
+    --subject '$design.subject'
+    --covars '$design.covars'
+    --max-gap $cluster.max_gap
+    --rho-min $cluster.rho_min
+    --decay-bp $smooth.decay_bp
+    --lam-grid '$smooth.lam_grid'
+    --cv-folds $smooth.cv_folds
+    --min-probes $call.min_probes
+    --min-effect $call.min_effect
+    --n-perm $infer.n_perm
+    --n-boot $infer.n_boot
+    --seed $infer.seed
+    #if $infer.also_naive_perm
+        --also-naive-perm
+    #end if
+    ]]></command>
+    <inputs>
+        <param name="mval" type="data" format="binary" label="Harmonised M-value matrix (mval.f64)"
+               help="Column-major float64 dump written by the harmonisation tool."/>
+        <param name="dims" type="data" format="json" label="Matrix header (mval_dims.json)"/>
+        <param name="pheno" type="data" format="csv" label="Phenotype table (pheno_used.csv)"/>
+        <param name="anno" type="data" format="csv" label="Probe annotation (probe_annotation.csv)"/>
+
+        <section name="design" title="Longitudinal design" expanded="true">
+            <expand macro="design_inputs"/>
+        </section>
+
+        <section name="cluster" title="Co-methylation clustering (replaces the fixed 300 bp gap)" expanded="false">
+            <param name="max_gap" type="integer" value="1000" min="1"
+                   label="Maximum genomic gap (bp) considered for joining"
+                   help="An upper bound only. Two probes within this distance are joined only if they are also co-methylated, so the clusters do not depend on which array panel supplied the probes."/>
+            <param name="rho_min" type="float" value="0.30" min="0" max="1"
+                   label="Minimum within-subject co-methylation to join two probes"
+                   help="Correlation is computed on subject-demeaned, covariate-adjusted residuals, so it measures co-methylation and not shared between-subject or between-array structure."/>
+        </section>
+
+        <section name="smooth" title="Total-variation smoothing (replaces fixed-span loess)" expanded="false">
+            <param name="decay_bp" type="float" value="1000" min="1"
+                   label="Distance decay length (bp)"
+                   help="The fusion penalty between neighbouring probes decays as exp(-d/decay). Large gaps get almost no penalty and are free to break, which is the behaviour a fixed loess span cannot express."/>
+            <param name="lam_grid" type="text" value="0.05,0.1,0.25,0.5,1.0,2.0,4.0"
+                   label="Smoothness grid (dimensionless)"
+                   help="The penalty is scaled by the median precision weight, so this grid transfers across M-values, beta values and cohorts without retuning."/>
+            <param name="cv_folds" type="integer" value="5" min="2"
+                   label="Cross-validation folds (over SUBJECTS)"
+                   help="Whole subjects are held out, never individual visits: splitting a subject's visits would leak the within-subject effect being validated."/>
+        </section>
+
+        <section name="call" title="Region calling" expanded="false">
+            <param name="min_probes" type="integer" value="3" min="1" label="Minimum probes per region"/>
+            <param name="min_effect" type="float" value="0.05" min="0"
+                   label="Minimum |region effect| (M-value units)"/>
+        </section>
+
+        <section name="infer" title="Inference" expanded="true">
+            <param name="n_perm" type="integer" value="200" min="0"
+                   label="Permutation replicates (within-subject)"
+                   help="The exposure is permuted only among visits of the same subject, preserving the repeated-measures pairing."/>
+            <param name="n_boot" type="integer" value="50" min="0"
+                   label="Stability-selection subsamples"
+                   help="Fraction of subject subsamples in which a region is re-discovered. Reported alongside the p-value as a robustness score."/>
+            <param name="also_naive_perm" type="boolean" checked="false" truevalue="true" falsevalue=""
+                   label="Also run the legacy free permutation"
+                   help="Runs bumphunter's permutation scheme on the same statistic, so its mis-calibration on this design can be quantified rather than assumed."/>
+            <param name="seed" type="integer" value="1" label="Random seed"/>
+        </section>
+    </inputs>
+    <outputs>
+        <data name="regions" format="csv" label="${tool.name} on ${on_string}: regions" from_work_dir="out/dmr_ml.csv"/>
+        <data name="cv" format="csv" label="${tool.name} on ${on_string}: smoothness CV trace" from_work_dir="out/lambda_cv.csv"/>
+        <data name="null_dist" format="csv" label="${tool.name} on ${on_string}: permutation null" from_work_dir="out/permutation_null.csv"/>
+        <data name="cfg" format="json" label="${tool.name} on ${on_string}: run configuration" from_work_dir="out/run_config.json"/>
+    </outputs>
+    <tests>
+        <test expect_num_outputs="4">
+            <param name="mval" value="test_mval.f64" ftype="binary"/>
+            <param name="dims" value="test_mval_dims.json" ftype="json"/>
+            <param name="pheno" value="test_pheno.csv" ftype="csv"/>
+            <param name="anno" value="test_anno.csv" ftype="csv"/>
+            <section name="design">
+                <param name="exposure" value="exposure"/>
+                <param name="exposure_scale" value="1"/>
+                <param name="subject" value="subject"/>
+                <param name="covars" value=""/>
+            </section>
+            <section name="infer">
+                <param name="n_perm" value="10"/>
+                <param name="n_boot" value="5"/>
+                <param name="seed" value="1"/>
+            </section>
+            <output name="cfg">
+                <assert_contents>
+                    <has_text text="lam0_selected"/>
+                    <has_text text="cross_array_sign_concordance"/>
+                </assert_contents>
+            </output>
+        </test>
+    </tests>
+    <help><![CDATA[
+**What it does**
+
+Finds differentially methylated regions in a longitudinal EWAS whose samples
+come from two different Illumina arrays (450K and EPIC). It replaces section
+2.6 of the minfi/EWASGalaxy stack -- ``clusterMaker`` with a fixed 300 bp
+maximum gap, ``loessByCluster`` smoothing with a fixed span, and permutation of
+the design column of interest.
+
+**Why the original is not valid here**
+
+*Fixed-gap clustering.* Harmonising 450K with EPIC keeps only the probes both
+arrays carry, which changes the spacing of the panel. On the harmonised set
+only about half of neighbouring probe pairs fall within 300 bp, so a fixed gap
+makes a cluster a property of the array panel rather than of the locus.
+
+*Fixed-span loess.* A span defined in probes treats a 50 bp step and a 50 kb
+step as equally close neighbours, and it returns a smooth curve with no
+breakpoints, so region boundaries have to be recovered by thresholding.
+
+*Free permutation.* Permuting the exposure across all samples destroys the
+within-subject pairing. Because subject, cohort, chip and array type are nested
+in this design, it also creates between-array contrasts that no real
+reassignment of visit times could produce, so the resulting null is not a null
+for this design.
+
+**What this tool does instead**
+
+1. within-subject probe-level effects, so the confounded array/cohort/chip
+   terms are absorbed exactly
+2. clusters formed only where probes are both close *and* co-methylated
+3. weighted total-variation denoising with a distance-decayed penalty --
+   piecewise-constant output, so breakpoints are explicit, with smoothness
+   chosen by held-out-subject cross-validation
+4. family-wise error from within-subject permutation
+5. stability selection over subject subsamples
+6. cross-array generalisation: every region's effect is re-estimated in the
+   450K cohort alone and in the EPIC cohort alone and the two are compared
+
+@DESIGN_NOTE@
+
+**Outputs**
+
+The region table carries, per region, the precision-weighted effect in M-value
+units, its z statistic, the within-subject permutation FWER, the stability
+score, and the separate 450K and EPIC effect estimates with a direction-
+concordance flag.
+    ]]></help>
+    <expand macro="citations_common"/>
+</tool>
