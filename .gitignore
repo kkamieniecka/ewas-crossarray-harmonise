@@ -1,0 +1,32 @@
+# Nextflow
+work/
+.nextflow/
+.nextflow.log*
+timeline*.html
+report*.html
+trace*.txt
+dag*.html
+
+# R / Python
+.Rhistory
+.RData
+.Rproj.user/
+.r-libs/
+__pycache__/
+*.pyc
+.venv/
+
+# raw data and large intermediates are never committed
+data/idat/
+*.idat
+*.idat.gz
+results/**/mval.f64
+results/**/resid.rds
+results/**/harmonised.rds
+results/**/*_cluster_effects.csv.gz
+results/**/probe_stats_*.csv
+crossarray_probe_map.csv.gz
+
+# OS
+.DS_Store
+._*

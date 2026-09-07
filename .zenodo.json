@@ -1,0 +1,17 @@
+{
+  "title": "ewas-crossarray-harmonise: reproducible cross-array harmonisation and region detection for longitudinal EWAS",
+  "description": "Nextflow and Galaxy pipeline that harmonises Illumina HumanMethylation450 and MethylationEPIC data for longitudinal epigenome-wide association studies, and replaces the fixed-gap clustering, fixed-span smoothing and free permutation of the minfi region- and block-finding workflow with a repeated-measures design-aware alternative. Includes a controlled legacy baseline run on the identical harmonised matrix.",
+  "license": "MIT",
+  "upload_type": "software",
+  "keywords": [
+    "epigenome-wide association study",
+    "DNA methylation",
+    "Illumina 450K",
+    "Illumina MethylationEPIC",
+    "cross-array harmonisation",
+    "longitudinal",
+    "repeated measures",
+    "Galaxy",
+    "Nextflow"
+  ]
+}

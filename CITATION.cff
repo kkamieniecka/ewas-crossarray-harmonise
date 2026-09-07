@@ -1,0 +1,76 @@
+cff-version: 1.2.0
+title: >-
+  ewas-crossarray-harmonise: reproducible cross-array harmonisation and
+  region detection for longitudinal EWAS
+message: If you use this software, please cite it using these metadata.
+type: software
+# EDIT BEFORE FIRST RELEASE -------------------------------------------------
+# Replace the author block with the real author list. ORCID lines are
+# optional; delete any you do not have.
+authors:
+  - family-names: FAMILY-NAME
+    given-names: GIVEN-NAME
+    affiliation: AFFILIATION
+    # orcid: 'https://orcid.org/0000-0000-0000-0000'
+# ---------------------------------------------------------------------------
+repository-code: 'https://github.com/kkamieniecka/ewas-crossarray-harmonise'
+license: MIT
+version: 0.1.0
+date-released: '2026-09-05'
+keywords:
+  - epigenome-wide association study
+  - DNA methylation
+  - Illumina 450K
+  - Illumina MethylationEPIC
+  - cross-array harmonisation
+  - longitudinal
+  - repeated measures
+  - Galaxy
+  - Nextflow
+references:
+  - type: article
+    title: >-
+      EWASGalaxy: a tools suite for population epigenetics integrated into
+      Galaxy
+    authors:
+      - family-names: Murat
+        given-names: K.
+      - family-names: Grüning
+        given-names: B.
+      - family-names: Poterlowicz
+        given-names: P. W.
+      - family-names: Westgate
+        given-names: G.
+      - family-names: Tobin
+        given-names: D. J.
+      - family-names: Poterlowicz
+        given-names: K.
+    year: 2019
+    journal: bioRxiv
+    doi: 10.1101/553784
+  - type: article
+    title: >-
+      Minfi: a flexible and comprehensive Bioconductor package for the analysis
+      of Infinium DNA methylation microarrays
+    authors:
+      - family-names: Aryee
+        given-names: M. J.
+      - family-names: Jaffe
+        given-names: A. E.
+      - family-names: Corrada-Bravo
+        given-names: H.
+      - family-names: Ladd-Acosta
+        given-names: C.
+      - family-names: Feinberg
+        given-names: A. P.
+      - family-names: Hansen
+        given-names: K. D.
+      - family-names: Irizarry
+        given-names: R. A.
+    year: 2014
+    journal: Bioinformatics
+    volume: '30'
+    issue: '10'
+    start: 1363
+    end: 1369
+    doi: 10.1093/bioinformatics/btu049
