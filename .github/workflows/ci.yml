@@ -72,4 +72,13 @@ jobs:
           done
           [ -z "$fail" ]
       - name: workflow parses
-        run: nextflow run . --help
+        run: |
+          # `nextflow run . --help` would execute the workflow (there is no --help
+          # handler) and exit 1 on the required --sheet check. `lint` checks the
+          # script and config syntax without running anything.
+          if ! out=$(nextflow lint main.nf nextflow.config 2>&1); then
+            msg=$(printf '%s' "$out" | tail -40)
+            echo "::error title=lint::${msg//$'\n'/%0A}"
+            exit 1
+          fi
+          printf '%s\n' "$out"
