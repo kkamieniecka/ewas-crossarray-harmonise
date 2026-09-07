@@ -64,8 +64,9 @@ jobs:
         run: |
           fail=
           for p in conda docker singularity test; do
-            if ! out=$(nextflow config . -profile "$p" 2>&1 >/dev/null); then
-              echo "::error title=profile $p::${out//$'\n'/%0A}"
+            if ! out=$(nextflow config . -profile "$p" 2>&1); then
+              msg=$(printf '%s' "$out" | tail -40)
+              echo "::error title=profile $p::${msg//$'\n'/%0A}"
               fail=1
             fi
           done
