@@ -6,6 +6,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- `-profile test` skipped the comparison stage entirely: `COMPARE` was inside
+  the `if (params.run_baseline)` branch, so the smoke test stopped one stage
+  short of the table it exists to produce. `COMPARE` now always runs and is
+  handed an empty baseline channel when the legacy stage is off;
+  `06_compare.py --baseline-dir` became optional and reports the replacement
+  methods only in that case, with the row set and the common-footing loop
+  driven off one spec list so they cannot fall out of step.
+- `COMPARE` was never given the per-probe model directory, so the pipeline as
+  wired could not produce the `*_common` columns — the only cross-array
+  numbers that are comparable between methods. `PROBE_MODEL.out` is now an
+  input and `--probe-model-dir` is passed.
+- Published outputs landed one directory too deep
+  (`results/dmr/dmr/dmr_ml.csv`): every process already emits its stage
+  directory, and `publishDir` appended it again. Publishing is now flat to
+  `params.outdir` across all eight processes.
+- `workflow.onComplete` in `nextflow.config` called `log.info`, which is not
+  bound in that scope; the resulting handler error masked the real failure on
+  every failed run. It prints instead.
+- The `test` profile inherited the 32 GB `r_heavy` memory request, which the
+  local executor refuses outright on a smaller machine, so the run failed
+  before submitting any work. The profile now sets its own resource requests.
+- `06_compare.py` falls back to a plain pipe table when pandas' optional
+  `tabulate` dependency is absent, instead of failing at the last stage.
+
 ### Added
 - `bin/05_blocks_hsmm.R` and the block model in `bin/ewasml.R`
   (`dist_transitions`, `fit_block_hsmm`, `call_blocks`, `state_labels`): the

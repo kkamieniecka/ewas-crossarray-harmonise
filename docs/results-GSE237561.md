@@ -125,15 +125,45 @@ open-sea probes carried by both arrays, with stationary state probabilities
 Both correlations here rest on 4 and 8 units respectively and carry almost no
 information — they are reported for completeness, not as a comparison.
 
-> **This table predates the state-labelling fix** (see CHANGELOG, *Fixed*).
-> The run above assumed the middle HSMM state is the zero-effect one instead
-> of identifying it. Its state means were ordered hypo < neutral < hyper with
-> effects on both sides of zero, so the assumption was probably satisfied
-> here and the counts probably do not change — but that has not been
-> verified, because verifying it means re-running the stage. Until it is
-> re-run, treat the block count as a lower bound. `blocks_hsmm.csv` and
-> `openSea_cluster_effects.csv.gz` under `results/GSE237561/` come from the
-> same run and carry the same caveat.
+> **The HSMM column above predates the state-labelling fix** (see CHANGELOG,
+> *Fixed*) and is superseded by §6a. It was left in place because the legacy
+> comparison in the same table is unaffected.
+
+### 6a. The same fit, re-labelled: 8 blocks were 38
+
+The block stage was re-run after the state-identification fix. It takes no
+permutation or bootstrap argument, so `-profile test` does not change it, and
+the re-run reproduces the earlier fit exactly: 21 iterations, log-likelihood
+38,380.5013, state means (0, +0.0098, +0.0136), stationary probabilities
+0.124 / 0.621 / 0.256, the same 16,173 clusters over the same 152,721 open-sea
+probes. Only the interpretation of the states changed, and the earlier guess
+about it was wrong:
+
+| | pre-fix labelling | after the fix |
+|---|---|---|
+| neutral state | assumed to be the middle one | identified as the zero-mean state (index 0) |
+| state labels | hypo / neutral / hyper | neutral / hyper / hyper |
+| blocks called | 8 (5 hyper, 3 hypo) | 38 (all hyper) |
+| median block width | 62,301 bp | 133,601 bp |
+| median clusters per block | 9 | 9 |
+| cross-array *r* (shared estimator) | 0.307 (n=8) | 0.045 (n=38) |
+
+The fitted means are 0, +0.0098 and +0.0136: **there is no hypo state in this
+fit at all.** Assuming the middle state is neutral therefore did two things —
+it reported segments of the genuinely-neutral zero-mean state as *hypo* calls
+(the 3 above), and it silently discarded segments of the lower hyper state,
+which is where the 30 additional blocks come from. The counts were a lower
+bound, as flagged, but the direction split in the pre-fix run was an artefact
+of the labelling rather than a property of the data.
+
+Posteriors for the 38 called blocks run 0.80–0.98. That is the model's
+confidence in the state assignment at the `--min-post 0.8` threshold, not a
+test against a null: the block stage defines no family-wise error, so §8's
+"nothing is discovered" is unchanged by this re-labelling.
+
+`results/GSE237561/blocks_hsmm.csv` and `openSea_cluster_effects.csv.gz` are
+still the pre-fix files; the re-run outputs live outside the repository
+because raw data are not committed.
 
 Two operational findings on the legacy implementation:
 
@@ -179,7 +209,8 @@ finding a hit:
    the 450K∩EPIC intersection.
 3. The legacy permutation scheme is mis-calibrated on this design, in the
    conservative direction, costing power (§5).
-4. The replacements aggregate genuinely (84 bp / 3 probes; 62 kb / 9 clusters)
+4. The replacements aggregate genuinely (84 bp / 3 probes; 134 kb / 9 clusters
+   after the state-labelling fix, §6a)
    while matching cross-cohort agreement and improving sign concordance (§4).
 
 ## Reproducing

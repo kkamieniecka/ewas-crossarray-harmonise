@@ -187,8 +187,10 @@ nextflow run . -profile docker \
     --outdir     results
 ```
 
-`-profile test` runs the same graph with 10 permutations and no baseline as a
-smoke test. Every stage is also runnable standalone as an ordinary
+`-profile test` runs the same graph with 10 permutations and no legacy baseline
+as a smoke test — every process including the comparison, whose table then
+carries the replacement methods only. It reduces the resampling counts, not the
+data, so it still needs the full IDAT set (~40 min for GSE237561 on 8 cores). Every stage is also runnable standalone as an ordinary
 `Rscript`/`python` command with `--help`. See
 [`docs/installation.md`](docs/installation.md) for the conda and Apple Silicon
 routes, and [`docs/parameters.md`](docs/parameters.md) for the sample-sheet

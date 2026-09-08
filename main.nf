@@ -71,7 +71,7 @@ def required(name, value) {
 
 process HARMONISE {
     tag 'harmonise'
-    publishDir "${params.outdir}/harmonised", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'r_heavy'
 
     input:
@@ -99,7 +99,7 @@ process HARMONISE {
 
 process PROBE_MODEL {
     tag 'probe-model'
-    publishDir "${params.outdir}/probe_model", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'r_heavy'
 
     input:
@@ -119,7 +119,7 @@ process PROBE_MODEL {
 
 process BASELINE {
     tag 'legacy-bumphunter'
-    publishDir "${params.outdir}/baseline", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'r_heavy'
 
     input:
@@ -158,7 +158,7 @@ def dmrArgs() {
 
 process DMR_ML {
     tag 'dmr-ml'
-    publishDir "${params.outdir}/dmr", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'r_heavy'
 
     input:
@@ -187,7 +187,7 @@ process DMR_ML {
 // report do not care which one ran.
 process DMR_ML_PY {
     tag 'dmr-ml-py'
-    publishDir "${params.outdir}/dmr", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'py_heavy'
 
     input:
@@ -227,7 +227,7 @@ def blocksArgs() {
 
 process BLOCKS_HSMM {
     tag 'blocks-hsmm'
-    publishDir "${params.outdir}/blocks", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'r_heavy'
 
     input:
@@ -254,7 +254,7 @@ process BLOCKS_HSMM {
 // COMPARE and the report do not care which one ran.
 process BLOCKS_HSMM_PY {
     tag 'blocks-hsmm-py'
-    publishDir "${params.outdir}/blocks", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'py_heavy'
 
     input:
@@ -278,21 +278,28 @@ process BLOCKS_HSMM_PY {
 
 process COMPARE {
     tag 'compare'
-    publishDir "${params.outdir}/comparison", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
     label 'py_light'
 
     input:
     path 'dmr/*'
     path 'blocks/*'
+    path 'probe_model/*'
     path 'baseline/*'
 
     output:
     path 'comparison/*', emit: all
 
     script:
+    // The baseline directory is empty when --run_baseline false; 06_compare.py
+    // then reports the replacement methods only. --probe-model-dir is what
+    // produces the *_common columns (every method's per-array region effect
+    // re-estimated from the same within-subject per-probe fits), which are the
+    // only cross-array columns comparable between methods.
     """
     python ${projectDir}/bin/06_compare.py \\
         --dmr-dir dmr --blocks-dir blocks --baseline-dir baseline \\
+        --probe-model-dir probe_model \\
         --out-dir comparison
     """
 }
@@ -327,12 +334,22 @@ workflow {
                        HARMONISE.out.pheno, HARMONISE.out.anno, pmap)
     blocks_out = blocks_impl == 'r' ? BLOCKS_HSMM.out : BLOCKS_HSMM_PY.out
 
+    // COMPARE runs whether or not the legacy baseline did: with it, the table
+    // is the four-method comparison; without it (--run_baseline false, as in
+    // -profile test) it still reports the replacement methods, so the smoke
+    // test exercises stage 06 instead of stopping one stage short.
     if (params.run_baseline) {
         BASELINE(HARMONISE.out.rds)
-        COMPARE(dmr_out.regions.mix(dmr_out.cfg).collect(),
-                blocks_out.blocks.mix(blocks_out.cfg).collect(),
-                BASELINE.out.all.collect())
+        baseline_files = BASELINE.out.all.collect()
     }
+    else {
+        baseline_files = Channel.value([])
+    }
+
+    COMPARE(dmr_out.regions.mix(dmr_out.cfg).collect(),
+            blocks_out.blocks.mix(blocks_out.cfg).collect(),
+            PROBE_MODEL.out.all.collect(),
+            baseline_files)
 }
 
 // The run summary handler lives in nextflow.config: a top-level

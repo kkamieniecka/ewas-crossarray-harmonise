@@ -38,7 +38,11 @@ def parse_args(argv=None):
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dmr-dir", required=True)
     p.add_argument("--blocks-dir", required=True)
-    p.add_argument("--baseline-dir", required=True)
+    p.add_argument("--baseline-dir", default=None,
+                   help="03_baseline_bumphunter.R output. Optional: when the "
+                        "legacy stage did not run (--run_baseline false, as in "
+                        "-profile test) the table carries the replacement "
+                        "methods only")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--probe-model-dir", default=None,
                    help="02_probe_model.R output; enables the common-footing "
@@ -53,6 +57,20 @@ def jload(path):
 
 def cload(path, **kw):
     return pd.read_csv(path, **kw) if os.path.exists(path) else pd.DataFrame()
+
+
+def md_table(df):
+    """Pipe table without requiring pandas' optional `tabulate` dependency."""
+    try:
+        return df.to_markdown(index=False)
+    except ImportError:
+        cols = list(df.columns)
+        head = "| " + " | ".join(str(c) for c in cols) + " |"
+        rule = "|" + "|".join("---" for _ in cols) + "|"
+        body = ["| " + " | ".join("" if pd.isna(v) else str(v)
+                                  for v in row) + " |"
+                for row in df.itertuples(index=False, name=None)]
+        return "\n".join([head, rule] + body)
 
 
 def _num(s):
@@ -166,13 +184,18 @@ def main(argv=None):
 
     dmr_cfg = jload(os.path.join(args.dmr_dir, "run_config.json"))
     blk_cfg = jload(os.path.join(args.blocks_dir, "hsmm_params.json"))
-    base_cfg = jload(os.path.join(args.baseline_dir, "baseline_summary.json"))
+    # The legacy stage is optional: -profile test switches it off, and a run
+    # that only exercises the replacements still has a comparison worth writing
+    # (unit counts, geometry, cross-array generalisation between the two).
+    have_baseline = bool(args.baseline_dir) and os.path.isdir(args.baseline_dir)
+    base_dir = args.baseline_dir if have_baseline else ""
+    base_cfg = jload(os.path.join(base_dir, "baseline_summary.json")) if have_baseline else {}
 
     dmr = cload(os.path.join(args.dmr_dir, "dmr_ml.csv"))
     nulls = cload(os.path.join(args.dmr_dir, "permutation_null.csv"))
     blk = cload(os.path.join(args.blocks_dir, "blocks_hsmm.csv"))
-    bh = cload(os.path.join(args.baseline_dir, "bumphunter_regions.csv"))
-    bf = cload(os.path.join(args.baseline_dir, "blockfinder_blocks.csv"))
+    bh = cload(os.path.join(base_dir, "bumphunter_regions.csv")) if have_baseline else pd.DataFrame()
+    bf = cload(os.path.join(base_dir, "blockfinder_blocks.csv")) if have_baseline else pd.DataFrame()
 
     def arr_cols(tab):
         c = [x for x in tab.columns if x.startswith("effect_")
@@ -182,21 +205,26 @@ def main(argv=None):
     q95_within = float(np.quantile(nulls["within"], 0.95)) if "within" in nulls else np.nan
     q95_naive = float(np.quantile(nulls["naive"], 0.95)) if "naive" in nulls else np.nan
 
-    rows = [
-        summarise("bumphunter (minfi 2.6)", "region", bh,
-                  ("start", "end"), "L", "fwer", arr_cols(bh),
-                  null_q95=np.nan, cfg=base_cfg),
-        summarise("TV + within-subject perm (2.6 replacement)", "region", dmr,
-                  ("start", "end"), "n_probes", "p_fwer_within", arr_cols(dmr),
-                  null_q95=q95_within, cfg=dmr_cfg),
-        summarise("blockFinder (minfi 2.7)", "block", bf,
-                  ("start", "end"), "L", "fwer", arr_cols(bf),
-                  null_q95=np.nan, cfg=base_cfg),
-        summarise("distance-aware HSMM (2.7 replacement)", "block", blk,
-                  ("start", "end"), "n_clusters", None, arr_cols(blk),
-                  null_q95=np.nan, cfg=blk_cfg),
-    ]
-    cmp = pd.DataFrame(rows)
+    # (method, level, table, probe count column, FWER column, null q95, cfg).
+    # Kept as one list so the common-footing loop below indexes the same
+    # tables as the rows, whether or not the legacy stage ran.
+    specs = []
+    if have_baseline:
+        specs.append(("bumphunter (minfi 2.6)", "region", bh, "L", "fwer",
+                      np.nan, base_cfg))
+    specs.append(("TV + within-subject perm (2.6 replacement)", "region", dmr,
+                  "n_probes", "p_fwer_within", q95_within, dmr_cfg))
+    if have_baseline:
+        specs.append(("blockFinder (minfi 2.7)", "block", bf, "L", "fwer",
+                      np.nan, base_cfg))
+    specs.append(("distance-aware HSMM (2.7 replacement)", "block", blk,
+                  "n_clusters", None, np.nan, blk_cfg))
+
+    cmp = pd.DataFrame([
+        summarise(name, level, tab, ("start", "end"), probe_col, fwer_col,
+                  arr_cols(tab), null_q95=q95, cfg=cfg)
+        for name, level, tab, probe_col, fwer_col, q95, cfg in specs
+    ])
 
     # ---- common-footing cross-array agreement ----------------------------
     if args.probe_model_dir:
@@ -207,7 +235,7 @@ def main(argv=None):
             if len(d):
                 per_array[a] = d
         if len(per_array) == 2:
-            for i, tab in ((0, bh), (1, dmr), (2, bf), (3, blk)):
+            for i, tab in enumerate(s[2] for s in specs):
                 for k, v in common_footing(tab, per_array).items():
                     cmp.loc[i, k] = v
     # a naive-permutation column on the SAME observed regions isolates the
@@ -232,7 +260,7 @@ def main(argv=None):
              f"Harmonised matrix: {dmr_cfg.get('n_probes','?')} autosomal probes x "
              f"{dmr_cfg.get('n_samples','?')} samples, "
              f"{dmr_cfg.get('n_subjects','?')} subjects.", "",
-             cmp.to_markdown(index=False), ""]
+             md_table(cmp), ""]
     if np.isfinite(q95_within) and np.isfinite(q95_naive):
         lines += [
             "## Permutation scheme",

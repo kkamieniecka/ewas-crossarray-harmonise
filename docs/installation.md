@@ -76,9 +76,39 @@ nextflow run . -profile test,conda --sheet <sheet> --idat_dir <dir> \
     --probe_map <map>
 ```
 
-The `test` profile runs the identical graph with 10 permutations and the legacy
-baseline switched off, which exercises every process and file contract in a
-few minutes rather than hours.
+The `test` profile runs the identical graph with 10 permutations, 5 bootstrap
+resamples and the legacy baseline switched off. It reduces the resampling
+counts only — it does not subset the input arrays, so it still needs the full
+IDAT set and the runtime is dominated by the per-probe stages. Measured on
+GSE237561 (126 arrays, 8 CPU cores, no container engine): harmonisation
+6 min 16 s, per-probe model 17 min 12 s, region finder 14 min 52 s, block
+finder 16 s, comparison 10 s, about 40 min wall in total.
+
+With `--run_baseline false` the comparison stage still runs and writes a table
+containing the two replacement methods only; the legacy rows appear when the
+baseline stage is on. Every process in the graph therefore executes under the
+test profile.
+
+The test profile also lowers the `r_heavy` memory request. That request caps
+what the executor will admit, not what a stage uses: the default 32 GB request
+is refused outright by the local executor on a 16 GB machine.
+
+### Running from conda environments without a container engine
+
+The processes call bare `Rscript` and `python`, so they inherit the launching
+shell's `PATH`. Two things bite when the environments are activated by hand
+rather than through `-profile conda`:
+
+* Nextflow's own environment ships a Python without numpy/pandas. Put the
+  analysis environments *before* it on `PATH`, or the `py_*` processes get the
+  wrong interpreter.
+* `openjdk` from conda-forge keeps the runtime outside the environment's
+  `bin/`, so `JAVA_HOME` has to be set explicitly for the launcher to find it.
+
+`06_compare.py` writes its Markdown table through `tabulate` when it is
+installed (it is declared in `conf/env-py.yml`) and falls back to a plain pipe
+table when it is not, so an ad-hoc environment does not fail at the last
+stage.
 
 ## What each stage needs
 
