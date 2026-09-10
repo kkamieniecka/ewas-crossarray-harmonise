@@ -20,6 +20,12 @@ All notable changes to this project are documented here. The format follows
   wrapper; the tool test sets `100`. Its error message also advised relaxing
   `--rho-min`/`--max-gap`, which merges probes and yields *fewer* clusters —
   it now names the direction that actually splits them and reports both counts.
+- `ewas_blocks_hsmm.xml` published the open-sea cluster table as `format="csv"`
+  while handing Galaxy the gzipped file, so the job failed while setting
+  metadata (`UnicodeDecodeError` on the gzip magic byte) and no output was
+  collected. The wrapper now decompresses that table before Galaxy picks it
+  up; the Nextflow stage still writes it gzipped. Found by `planemo test`, and
+  invisible to the serverless runner, which does not check datatypes.
 - `-profile test` skipped the comparison stage entirely: `COMPARE` was inside
   the `if (params.run_baseline)` branch, so the smoke test stopped one stage
   short of the table it exists to produce. `COMPARE` now always runs and is

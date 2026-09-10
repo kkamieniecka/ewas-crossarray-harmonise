@@ -29,6 +29,11 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
     #if $fixed_collapse
         --fixed-collapse
     #end if
+&&
+## the stage gzips this table for the Nextflow runs; Galaxy stores datasets
+## itself and sets metadata by reading the file, so hand it the plain CSV its
+## declared datatype promises
+gunzip -f out/openSea_cluster_effects.csv.gz
     ]]></command>
     <inputs>
         <param name="mval" type="data" format="binary" label="Harmonised M-value matrix (mval.f64)"/>
@@ -74,7 +79,7 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
     </inputs>
     <outputs>
         <data name="blocks" format="csv" label="${tool.name} on ${on_string}: blocks" from_work_dir="out/blocks_hsmm.csv"/>
-        <data name="clusters" format="csv" label="${tool.name} on ${on_string}: open-sea cluster effects" from_work_dir="out/openSea_cluster_effects.csv.gz"/>
+        <data name="clusters" format="csv" label="${tool.name} on ${on_string}: open-sea cluster effects" from_work_dir="out/openSea_cluster_effects.csv"/>
         <data name="cfg" format="json" label="${tool.name} on ${on_string}: fitted model" from_work_dir="out/hsmm_params.json"/>
     </outputs>
     <tests>
