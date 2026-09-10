@@ -86,6 +86,12 @@ jobs:
         with:
           environment-name: gxtools
           init-shell: bash
+          # bioconductor-limma is on bioconda; without the channels declared
+          # here the solve fails
+          condarc: |
+            channels:
+              - conda-forge
+              - bioconda
           create-args: >-
             python=3.11
             r-base=4.4
