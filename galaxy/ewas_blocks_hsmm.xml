@@ -23,6 +23,7 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
     --length-scale $hsmm.length_scale
     --min-post $hsmm.min_post
     --min-clusters $hsmm.min_clusters
+    --min-fit-clusters $hsmm.min_fit_clusters
     --seed $hsmm.seed
     --var-method '$hsmm.var_method'
     #if $fixed_collapse
@@ -57,6 +58,9 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
                    help="Blocks are decoded from the state posterior, so this is a probability, not an effect-size cutoff on a smooth curve."/>
             <param name="min_clusters" type="integer" value="3" min="1"
                    label="Minimum clusters per block"/>
+            <param name="min_fit_clusters" type="integer" value="200" min="1"
+                   label="Minimum open-sea clusters required to fit the model"
+                   help="A precondition on the whole panel, not on a single block: below this the three-state fit is not usefully identifiable. Lower it only for small test panels."/>
             <param name="seed" type="integer" value="1" label="Random seed"/>
             <param name="var_method" type="select" label="Variance moderation">
                 <option value="limma" selected="true">limma squeezeVar (empirical Bayes)</option>
@@ -85,6 +89,11 @@ Rscript '$__tool_directory__/../bin/05_blocks_hsmm.R'
                 <param name="exposure_scale" value="1"/>
                 <param name="subject" value="subject"/>
                 <param name="covars" value=""/>
+            </section>
+            <section name="hsmm">
+                <!-- the 4000-probe fixture clusters into ~170 open-sea units,
+                     below the production floor of 200 -->
+                <param name="min_fit_clusters" value="100"/>
             </section>
             <output name="cfg">
                 <assert_contents>

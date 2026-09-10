@@ -57,6 +57,8 @@ opt_list <- list(
               help = "HSMM distance length scale L in bp; the 250 kb default matches the loess window it replaces [default %default]"),
   make_option("--min-post", type = "double", default = 0.80),
   make_option("--min-clusters", type = "integer", default = 3L),
+  make_option("--min-fit-clusters", type = "integer", default = 200L,
+              help = "refuse to fit the block model on fewer open-sea clusters than this; the default is a production floor, lower it only for small test panels [default %default]"),
   make_option("--fixed-collapse", action = "store_true", default = FALSE,
               help = "also report the legacy fixed-width collapse, for comparison of the resulting units"),
   make_option("--var-method", type = "character", default = "limma",
@@ -131,8 +133,15 @@ rm(resid); invisible(gc(FALSE))
 n_cl <- if (max(cl) >= 0) as.integer(max(cl) + 1L) else 0L
 log_msg(sprintf("co-methylated open-sea clusters: %d covering %d probes",
                 n_cl, sum(cl >= 0)))
-if (n_cl < 200)
-  stop("too few open-sea clusters to fit a block model; relax --rho-min or --max-gap")
+# Fewer clusters than this and the three-state fit is not identifiable in any
+# useful sense. Relaxing the clustering merges probes further and yields FEWER
+# clusters, so the way out is to split them, not to relax them.
+if (n_cl < opt$min_fit_clusters)
+  stop(sprintf(paste("too few open-sea clusters (%d < %d) to fit a block model;",
+                     "raise --rho-min or lower --max-gap to split clusters,",
+                     "supply a larger panel, or lower --min-fit-clusters if a",
+                     "coarse fit is intended"),
+               n_cl, opt$min_fit_clusters))
 
 # collapse each cluster to its mean M-value profile: the cpgCollapse step, but
 # over data-defined clusters

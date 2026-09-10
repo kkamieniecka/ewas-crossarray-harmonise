@@ -110,6 +110,7 @@ runs the Python one, which is how the agreement is re-checked on real data.
 | `--length-scale` | `250000` | HMM transition length scale `L` in `A(d) = e^{-d/L} I + (1-e^{-d/L}) 1π'` |
 | `--min-post` | `0.80` | posterior threshold for calling a block |
 | `--min-clusters` | `3` | minimum clusters per block |
+| `--min-fit-clusters` | `200` | precondition on the whole panel: below this many open-sea clusters the stage refuses to fit rather than returning an unidentifiable three-state model. Distinct from `--min-clusters`, which is per called block. Lower it only for small test panels — the Galaxy tool test sets `100` for a 4000-probe fixture |
 | `--fixed-collapse` | off | also report what the legacy fixed 500/1500 bp collapse would have produced on the same probes |
 | `--var-method` | `limma` | R only, as in stage 04: `limma` (squeezeVar) or `mom`, the ported method-of-moments path the Python uses. The stage-level equivalence check runs `mom` on both sides, which is also what makes it runnable without limma |
 | `--array-col` | `Array_Type` | column splitting the per-array check. An arm with no residual degrees of freedom after the within transform is declined rather than fitted, and `cross_array_r` is then `null` |

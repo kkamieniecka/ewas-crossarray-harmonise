@@ -64,6 +64,10 @@ def parse_args(argv=None):
                    help="HSMM distance length scale L in bp; the 250 kb default matches the loess window it replaces")
     p.add_argument("--min-post", type=float, default=0.80)
     p.add_argument("--min-clusters", type=int, default=3)
+    p.add_argument("--min-fit-clusters", type=int, default=200,
+                   help="refuse to fit the block model on fewer open-sea "
+                        "clusters than this; the default is a production "
+                        "floor, lower it only for small test panels")
     p.add_argument("--fixed-collapse", action="store_true",
                    help="also report the legacy fixed-width collapse, for comparison of the resulting units")
     p.add_argument("--seed", type=int, default=1)
@@ -117,9 +121,14 @@ def main(argv=None):
     del resid
     n_cl = int(cl.max() + 1) if cl.max() >= 0 else 0
     log(f"co-methylated open-sea clusters: {n_cl} covering {int((cl>=0).sum())} probes")
-    if n_cl < 200:
-        raise SystemExit("too few open-sea clusters to fit a block model; "
-                         "relax --rho-min or --max-gap")
+    # Relaxing the clustering merges probes further and yields FEWER clusters,
+    # so the way out of this is to split them, not to relax them.
+    if n_cl < args.min_fit_clusters:
+        raise SystemExit(f"too few open-sea clusters ({n_cl} < "
+                         f"{args.min_fit_clusters}) to fit a block model; "
+                         "raise --rho-min or lower --max-gap to split "
+                         "clusters, supply a larger panel, or lower "
+                         "--min-fit-clusters if a coarse fit is intended")
 
     # collapse each cluster to its mean M-value profile (the cpgCollapse step,
     # but over data-defined clusters)

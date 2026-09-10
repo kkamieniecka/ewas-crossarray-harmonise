@@ -77,6 +77,47 @@ jobs:
           done
           exit $missing
 
+  galaxy-tool-tests:
+    name: planemo lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: gxtools
+          init-shell: bash
+          create-args: >-
+            python=3.11
+            r-base=4.4
+            bioconductor-limma
+            r-matrix
+            r-optparse
+            r-jsonlite
+      - name: install planemo
+        shell: bash -el {0}
+        run: pip install planemo
+      - name: lint
+        shell: bash -el {0}
+        # fail_level error, not the default warn: ewas_harmonise carries no
+        # <tests> yet (it needs IDATs), and that warning should stay visible
+        # without failing the build
+        run: planemo lint --fail_level error galaxy/ewas_*.xml
+      - name: test the wrappers that carry tests
+        shell: bash -el {0}
+        # --no_dependency_resolution: the requirements are already installed in
+        # this environment, and letting Galaxy resolve them per job would pull
+        # the Bioconductor stack a second time
+        run: |
+          planemo test --no_dependency_resolution \
+            --test_output planemo_report.html \
+            --test_output_json planemo_report.json \
+            galaxy/ewas_dmr_ml.xml galaxy/ewas_blocks_hsmm.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: planemo-report
+          path: planemo_report.*
+
   nextflow-config:
     name: Nextflow config and syntax
     runs-on: ubuntu-latest

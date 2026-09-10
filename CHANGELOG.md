@@ -7,6 +7,19 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- The Galaxy tool tests could not run at all: `galaxy/ewas_dmr_ml.xml` and
+  `galaxy/ewas_blocks_hsmm.xml` referenced five `test-data` files that were
+  never committed, so `planemo test` failed at collection. The fixtures are
+  now in `galaxy/test-data/`, generated from
+  `tests/gen_equivalence_fixtures.py` (4000 synthetic probes, 39 arrays, 12
+  subjects — no study data).
+- `05_blocks_hsmm.R` refused to fit below a hard-coded 200 open-sea clusters,
+  a floor no option could reach and one that no small panel can clear, which
+  made the block tool untestable. The floor is now `--min-fit-clusters`
+  (default `200`, so production behaviour is unchanged) and is exposed in the
+  wrapper; the tool test sets `100`. Its error message also advised relaxing
+  `--rho-min`/`--max-gap`, which merges probes and yields *fewer* clusters —
+  it now names the direction that actually splits them and reports both counts.
 - `-profile test` skipped the comparison stage entirely: `COMPARE` was inside
   the `if (params.run_baseline)` branch, so the smoke test stopped one stage
   short of the table it exists to produce. `COMPARE` now always runs and is
@@ -32,6 +45,18 @@ All notable changes to this project are documented here. The format follows
   `tabulate` dependency is absent, instead of failing at the last stage.
 
 ### Added
+- `planemo lint` and `planemo test` run in CI (`galaxy-tool-tests` job) on the
+  two wrappers that carry `<tests>`, with dependency resolution off against a
+  micromamba environment holding the R requirements, and the planemo report
+  uploaded as a build artifact. Linting fails on errors only, so the
+  `TestsMissing` warning on `ewas_harmonise` (it needs IDATs) stays visible
+  without failing the build.
+- `tests/run_galaxy_tool_tests.py`: runs a tool's `<tests>` without a Galaxy
+  server, for sandboxes where planemo cannot bind a local port. It renders the
+  `<command>` with Cheetah from the test values plus the XML defaults, executes
+  it, and checks `expect_num_outputs` and `<assert_contents>`. It does not
+  replace planemo — no datatype, metadata, output-format or dependency-
+  resolution checks.
 - `bin/05_blocks_hsmm.R` and the block model in `bin/ewasml.R`
   (`dist_transitions`, `fit_block_hsmm`, `call_blocks`, `state_labels`): the
   §2.7 block finder ported to R, now the pipeline default (`--blocks_impl r`).

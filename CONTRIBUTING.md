@@ -23,8 +23,36 @@ why array type cannot be adjusted for as a covariate in this design.
    a harmonised panel is the finding.
 4. **Do not commit data.** No IDATs, no full probe-level matrices, no
    `harmonised.rds`. `.gitignore` covers the usual paths. Result tables under
-   `results/` are documentation exhibits and must stay small.
-5. **Record parameters, not just outputs.** Every stage writes a run record
+   `results/` are documentation exhibits and must stay small. The one binary
+   in the tree is `galaxy/test-data/test_mval.f64` (1.2 MB), a synthetic
+   4000-probe fixture the tool tests cannot generate at run time — regenerate
+   it rather than editing it, and do not grow it.
+5. **Run the Galaxy tool tests if you touched `galaxy/`.** The reference check
+   is planemo, which CI runs on every push:
+
+   ```sh
+   planemo lint --fail_level error galaxy/ewas_*.xml
+   planemo test --no_dependency_resolution \
+       galaxy/ewas_dmr_ml.xml galaxy/ewas_blocks_hsmm.xml
+   ```
+
+   `planemo test` starts a Galaxy instance on a local port, which some
+   development sandboxes forbid. Where it cannot run, use
+
+   ```sh
+   python tests/run_galaxy_tool_tests.py galaxy/ewas_dmr_ml.xml \
+       galaxy/ewas_blocks_hsmm.xml
+   ```
+
+   which renders the same `<command>` from the same `<test>` values plus the
+   XML defaults, runs it, and checks `expect_num_outputs` and
+   `<assert_contents>` — no server, and no substitute for planemo: it does not
+   check datatypes, metadata, output formats or dependency resolution. Both
+   paths need `Rscript` with `limma`, `Matrix`, `optparse` and `jsonlite` on
+   the path. Fixtures live in `galaxy/test-data/` and are regenerated with
+   `python tests/gen_equivalence_fixtures.py --stage-dir <dir>`; they are
+   synthetic by design, so no study data enters the repository.
+6. **Record parameters, not just outputs.** Every stage writes a run record
    (`run_config.json`, `hsmm_params.json`, `baseline_summary.json`) with
    resolved parameters, counts, seed and runtime. New parameters belong there
    too.
