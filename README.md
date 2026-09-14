@@ -164,6 +164,9 @@ ewas-crossarray-harmonise/
 │   ├── 06_compare.py             controlled old-vs-new benchmark
 │   ├── ewasml.R                  numerical core, R
 │   └── ewasml.py                 numerical core, Python
+├── pkg/crossarrayEWAS/           R package built from bin/ewasml.R (0.99.0)
+├── tools/build_pkg.py            generates that package from the core
+├── tools/run_checks.sh           R CMD check + BiocCheck on the generated package
 ├── tests/test_ewasml.py          numerical property checks (Python core)
 ├── tests/test_equivalence.R      R core must reproduce the Python core exactly
 ├── tests/test_stage05_equivalence.py   the two stage-05 drivers, end to end
@@ -219,6 +222,31 @@ state ordering, and co-methylation clustering behaviour.
 CI additionally runs `planemo lint` on all three Galaxy wrappers and
 `planemo test` on the two that carry tests, checks that every macro token a
 tool references is defined, and that all four Nextflow profiles resolve.
+
+## The R package
+
+`pkg/crossarrayEWAS` is the numerical core as an installable package, so the
+Galaxy wrappers and the Nextflow stages can depend on a version instead of
+vendoring `bin/ewasml.R`. It is **generated**, not maintained by hand:
+`tools/build_pkg.py` splits the core into `R/`, copies every function body
+verbatim and rewrites only the comment above it into roxygen form.
+
+```bash
+python3 tools/build_pkg.py
+Rscript -e 'roxygen2::roxygenise("pkg/crossarrayEWAS", clean = TRUE)'
+bash tools/run_checks.sh          # R CMD check, then BiocCheck
+Rscript tests/test_pkg_identity.R # package bodies still match bin/ewasml.R
+```
+
+At 0.99.0 it exports 17 functions with manual pages and 126 `testthat`
+expectations, and passes `R CMD check` with no errors, warnings or notes.
+It is not submittable yet: there is no vignette, nothing accepts a
+`SummarizedExperiment`, and the harmonisation stage is still script code.
+`docs/bioconductor-gaps.md` lists every item the checkers reported and who has
+to resolve it.
+
+Edit the core, never `pkg/crossarrayEWAS/R/`: `tests/test_pkg_identity.R` runs
+in CI and fails if the two have diverged.
 
 ## The Galaxy tools
 

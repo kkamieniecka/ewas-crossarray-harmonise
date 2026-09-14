@@ -52,6 +52,12 @@ jobs:
       # is unidentified and the cross-array fields are undefined.
       - name: stage 05 drivers must agree end to end
         run: python tests/test_stage05_equivalence.py stage
+      # pkg/crossarrayEWAS is generated from bin/ewasml.R with function bodies
+      # copied verbatim, so a hand edit to the package copy would silently
+      # fork the core. This compares the two definition by definition; it
+      # needs no Bioconductor toolchain, only the core's own dependencies.
+      - name: the package copy must still be the core
+        run: Rscript tests/test_pkg_identity.R
 
   galaxy-wrappers:
     name: Galaxy wrapper XML

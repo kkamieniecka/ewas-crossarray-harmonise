@@ -30,3 +30,9 @@ crossarray_probe_map.csv.gz
 # OS
 .DS_Store
 ._*
+
+# generated package build artefacts
+crossarrayEWAS_*.tar.gz
+*.Rcheck/
+*.BiocCheck/
+check-out/

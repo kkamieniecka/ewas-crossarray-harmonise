@@ -1,0 +1,31 @@
+Package: crossarrayEWAS
+Type: Package
+Title: Design-Aware Region and Block Detection for Cross-Array Longitudinal EWAS
+Version: 0.99.0
+Authors@R: person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
+    email = "ENTER.YOUR.ADDRESS@example.org")
+Description: Estimation and region-calling routines for epigenome-wide
+    association studies that combine Illumina HumanMethylation450 and
+    MethylationEPIC samples and follow subjects over more than one visit.
+    Probe-level effects are fitted within subject, so subject identity, array
+    type and chip are absorbed rather than modelled; adjacent probes are
+    grouped by within-subject co-methylation; regions are obtained by
+    total-variation denoising with a distance-decaying penalty, which places
+    boundaries where the effect track jumps instead of thresholding a smooth
+    curve; and long-range blocks are called from a three-state hidden
+    semi-Markov model whose transition probabilities decay with genomic
+    distance. Selection stability and permutation nulls resample subjects, not
+    samples, so a subject's visit series is never split.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.5.0)
+Imports: Matrix, jsonlite, limma, stats
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
+    SummarizedExperiment, GenomicRanges
+biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
+    MethylationArray, Regression, Software
+BiocType: Software
+URL: https://github.com/kkamieniecka/ewas-crossarray-harmonise
+BugReports: https://github.com/kkamieniecka/ewas-crossarray-harmonise/issues
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
