@@ -169,6 +169,7 @@ ewas-crossarray-harmonise/
 ├── tests/test_stage05_equivalence.py   the two stage-05 drivers, end to end
 ├── tests/gen_equivalence_fixtures.py   generates those inputs and references
 ├── galaxy/                       Galaxy wrappers, shared macros, .shed.yml
+│                                 (published separately, see below)
 ├── conf/                         conda specs + source-install script
 ├── docs/                         methods, rationale, parameters, results
 ├── results/GSE237561/            validation tables, run records, logs
@@ -215,9 +216,18 @@ piecewise-constant track, the flat limit as the penalty grows, structural and
 calibration checks on the within-subject permutation, HMM block recall and
 state ordering, and co-methylation clustering behaviour.
 
-CI additionally checks Galaxy wrapper XML well-formedness, that every macro
-token a tool references is defined, and that all four Nextflow profiles
-resolve.
+CI additionally runs `planemo lint` on all three Galaxy wrappers and
+`planemo test` on the two that carry tests, checks that every macro token a
+tool references is defined, and that all four Nextflow profiles resolve.
+
+## The Galaxy tools
+
+The wrappers in `galaxy/` are developed here and published as a standalone,
+Tool Shed-installable suite at
+[bioinfbrad/ewas-crossarray-harmonise](https://github.com/bioinfbrad/ewas-crossarray-harmonise),
+which vendors the drivers this repository keeps in `bin/` and is refreshed from
+a checkout of this repository by its own `sync-from-pipeline.sh`. Edit the
+wrappers here; sync there.
 
 ## Citing
 

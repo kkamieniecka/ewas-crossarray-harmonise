@@ -51,6 +51,12 @@ All notable changes to this project are documented here. The format follows
   `tabulate` dependency is absent, instead of failing at the last stage.
 
 ### Added
+- The `galaxy/` wrappers are now also published as a standalone,
+  Tool Shed-installable suite at
+  [bioinfbrad/ewas-crossarray-harmonise](https://github.com/bioinfbrad/ewas-crossarray-harmonise),
+  extracted at commit `e4c54cf`. That repository vendors the drivers from
+  `bin/` into its own `scripts/` and is refreshed from a checkout of this one;
+  the wrappers continue to be developed here.
 - `planemo lint` and `planemo test` run in CI (`galaxy-tool-tests` job) on the
   two wrappers that carry `<tests>`, with dependency resolution off against a
   micromamba environment holding the R requirements, and the planemo report
