@@ -397,7 +397,7 @@ Type: Package
 Title: Design-Aware Region and Block Detection for Cross-Array Longitudinal EWAS
 Version: 0.99.0
 Authors@R: person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
-    email = "ENTER.YOUR.ADDRESS@example.org")
+    email = "kkamieni@bradford.ac.uk")
 Description: Estimation and region-calling routines for epigenome-wide
     association studies that combine Illumina HumanMethylation450 and
     MethylationEPIC samples and follow subjects over more than one visit.
@@ -416,6 +416,7 @@ Depends: R (>= 4.5.0)
 Imports: Matrix, jsonlite, limma, stats
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
     SummarizedExperiment, GenomicRanges
+VignetteBuilder: knitr
 biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
     MethylationArray, Regression, Software
 BiocType: Software
@@ -960,6 +961,20 @@ test_that("state labels stay unambiguous when the pinned state is at an end", {
 }
 
 
+# Vignette sources are ordinary .Rmd files under VIGNETTE_SRC, not generated
+# from the core, because the narrative is prose: they are copied in verbatim so
+# they can be edited as .Rmd and still survive regeneration of the tree.
+VIGNETTE_SRC = os.path.join(os.path.dirname(PKG), "vignettes-src")
+
+
+def copy_vignettes(pkg):
+    rmd = sorted(f for f in os.listdir(VIGNETTE_SRC) if f.endswith(".Rmd"))
+    assert rmd, f"no .Rmd in {VIGNETTE_SRC}; BiocCheck requires a vignette"
+    for f in rmd:
+        shutil.copy(os.path.join(VIGNETTE_SRC, f), f"{pkg}/vignettes/{f}")
+    return rmd
+
+
 def write_metadata(pkg, exported):
     open(f"{pkg}/DESCRIPTION", "w").write(DESCRIPTION)
     open(f"{pkg}/NAMESPACE", "w").write(NAMESPACE_TMPL.format(
@@ -981,9 +996,8 @@ def write_metadata(pkg, exported):
         "# Pipeline drivers\n\n"
         "The command-line stage drivers (`04_dmr_ml.R`, `05_blocks_hsmm.R`) "
         "live in the pipeline repository and are not yet installed here. They "
-        "call the exported functions plus one internal helper (`pinv()`), "
-        "which has to be replaced by `MASS::ginv()` or dropped before they can "
-        "run against the installed package.\n")
+        "call only exported functions, and prefer the installed package over "
+        "sourcing the pipeline's `ewasml.R` when one is present.\n")
 
 
 def main():
@@ -1018,10 +1032,12 @@ def main():
 
     exported = sorted(n for n in LAYOUT if n not in INTERNAL)
     write_metadata(PKG, exported)
-    return exported, {f: len(per_file[f]) for f in FILE_ORDER}
+    vig = copy_vignettes(PKG)
+    return exported, {f: len(per_file[f]) for f in FILE_ORDER}, vig
 
 
 if __name__ == "__main__":
-    exp, counts = main()
+    exp, counts, vig = main()
     print(len(exp), "exported:", " ".join(exp))
     print("files:", counts)
+    print("vignettes:", " ".join(vig))

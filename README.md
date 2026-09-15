@@ -239,16 +239,25 @@ Rscript tests/test_pkg_identity.R # package bodies still match bin/ewasml.R
 ```
 
 At 0.99.0 it exports 18 functions with manual pages and 142 `testthat`
-expectations, and passes `R CMD check` with no errors, warnings or notes.
-It is not submittable yet: there is no vignette, nothing accepts a
-`SummarizedExperiment`, and the harmonisation stage is still script code.
+expectations, carries a vignette that recovers planted signals from a
+simulated two-array cohort, and passes `R CMD check` — vignette rebuild
+included — with no errors, warnings or notes. `BiocCheck` is down to one
+error, the maintainer's support-site registration, which no build can supply.
 `docs/bioconductor-gaps.md` lists every item the checkers reported and who has
 to resolve it; `docs/bioconductor-submission.md` is the route to a submission —
 the 2026 BiocContributions/R-universe process, and why the package needs its
-own repository named `crossarrayEWAS` before any of it can start.
+own repository named `crossarrayEWAS`, which `tools/sync-to-pkg-repo.sh`
+publishes to:
 
-Edit the core, never `pkg/crossarrayEWAS/R/`: `tests/test_pkg_identity.R` runs
-in CI and fails if the two have diverged.
+```bash
+tools/sync-to-pkg-repo.sh /path/to/crossarrayEWAS [remote]
+```
+
+Edit the core, never `pkg/crossarrayEWAS/R/`, and the vignette in
+`pkg/vignettes-src/`, never `pkg/crossarrayEWAS/vignettes/`:
+`tests/test_pkg_identity.R` runs in CI and fails if the core and the package
+have diverged, and everything in the generated tree is overwritten on the next
+`tools/build_pkg.py`.
 
 `bin/04_dmr_ml.R` and `bin/05_blocks_hsmm.R` use the installed package when
 there is one and source `bin/ewasml.R` when there is not, recording which as

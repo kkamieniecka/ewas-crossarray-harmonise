@@ -1,0 +1,27 @@
+# Runs the same build-and-check workflow R-universe runs for Bioconductor
+# submissions, from your own repository and without deploying anywhere. Use it
+# to get the four-platform report (linux, macos, windows, plus the BiocCheck
+# results) BEFORE opening the submission issue: once the issue is open, a new
+# report only comes from a z-level version bump pushed to the staging remote.
+#
+# `organization: bioconductor` is what turns the BiocCheck checks on; without
+# it the run is an ordinary R-universe build and the submission-specific
+# checks are skipped.
+#
+# This file belongs in the standalone crossarrayEWAS repository, not in the
+# pipeline repository: tools/sync-to-pkg-repo.sh installs it there when it is
+# missing and then leaves it alone, since the package repository's workflows
+# are not generated from here.
+name: Test R-universe
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: R-universe testing
+    uses: r-universe-org/workflows/.github/workflows/build.yml@v3
+    with:
+      universe: bioc
+      organization: bioconductor # for BiocCheck checks

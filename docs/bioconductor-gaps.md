@@ -6,7 +6,8 @@ what the two checkers actually said, measured on version 0.99.0, so the
 remaining work is a list rather than a reading of the guidelines.
 
 Toolchain used: R 4.5.3 (aarch64-apple-darwin20), roxygen2 8.1.0,
-testthat 3.3.1, BiocCheck 1.46.3.
+testthat 3.3.1, BiocCheck 1.46.3, plus knitr, rmarkdown, BiocStyle and pandoc
+for the vignette.
 
 The submission mechanics — the 2026 BiocContributions/R-universe process, and
 the structural change it forces — are in `docs/bioconductor-submission.md`.
@@ -15,50 +16,41 @@ the structural change it forces — are in `docs/bioconductor-submission.md`.
 
 | check | verdict |
 |---|---|
-| `R CMD check --no-build-vignettes --no-manual` | **OK** — no errors, warnings or notes |
+| `R CMD check --no-manual` (vignette built and re-built) | **OK** — no errors, warnings or notes |
 | `testthat` (`pkg/crossarrayEWAS/tests`) | 142 expectations in 42 blocks, 0 failures |
 | `tests/test_pkg_identity.R` | 26 checks, 0 failures — package bodies identical to `bin/ewasml.R` |
-| `BiocCheck` | 3 errors, 1 warning, 8 notes — itemised below |
+| `BiocCheck` | 1 error, 1 warning, 6 notes — itemised below |
 
-`R CMD check` was run with `_R_CHECK_FORCE_SUGGESTS_=false`, because the
-suggested packages that only the unwritten vignette and class entry points
-need (`BiocStyle`, `rmarkdown`, `SummarizedExperiment`, `GenomicRanges`) are
-not installed on the machine that ran it. Nothing in `R/` or `tests/` imports
-them.
+`R CMD check` was run with `_R_CHECK_FORCE_SUGGESTS_=false`, because
+`SummarizedExperiment` and `GenomicRanges` are suggested and have no
+`osx-arm64` bioconda build; the submission machines have them, and nothing in
+`R/`, `tests/` or the vignette imports them. Vignette building is no longer
+suppressed: `R CMD build` takes about 11 s with it and the tarball is 427 KB,
+an order of magnitude larger than the code-only 31 KB and still far inside the
+5 MB limit.
 
-## The three BiocCheck errors
+## The one remaining BiocCheck error
 
-**1. No `vignettes` directory.** Bioconductor will not review a package
-without a vignette, and it has to be a narrative that runs, not a manual page
-index. This is the largest remaining piece of work and it needs a small
-committable example object, because no study data can go in the package: the
-synthetic fixtures in `tests/gen_equivalence_fixtures.py` are the natural
-seed, wrapped as a `SummarizedExperiment` in `inst/extdata` or built in the
-vignette itself.
+**"Unable to find your email in the Support Site: HTTP 404 Not Found."** With
+the sandbox allowed to reach support.bioconductor.org, this is now a real
+answer rather than a connection failure: `kkamieni@bradford.ac.uk` is not
+registered there. Registration under exactly the `DESCRIPTION` address, and
+subscription to the bioc-devel mailing list, are account tasks that no build
+can do — and the mailing-list check reports "cannot determine" for everyone,
+because it needs list-admin credentials, so it is not evidence either way.
 
-**2. "Use double colon for qualified imports" at `R/clusters.R` line 67.**
-This is a false positive. The flagged column is the `:` in
+Two errors that stood here before are closed:
 
-```r
-sl <- cand[st:min(st + chunk - 1L, length(cand))]
-```
-
-which the linter reads as a single-colon namespace access (`pkg:foo()`).
-Writing it as `seq(st, min(st + chunk - 1L, length(cand)))` silences the
-check and is exactly equivalent here, since `chunk >= 1L` makes the sequence
-increasing. The edit belongs in `bin/ewasml.R`, not in `R/clusters.R` —
-`tests/test_pkg_identity.R` fails if the package copy diverges — and once made
-it should be mirrored into `bin/ewasml.py` to keep the two cores in step.
-
-**3. "Unable to find your email in the Support Site."** Two separate things
-are behind this. The maintainer must be registered at
-support.bioconductor.org under the address in `DESCRIPTION`, and subscribed to
-the bioc-devel mailing list; both are account tasks that cannot be done from a
-build. The check also could not reach the site from this sandbox, so even a
-registered address would have reported an error here. The `Authors@R` email is
-still the placeholder `ENTER.YOUR.ADDRESS@example.org` — it must be a real
-address that reaches the maintainer for as long as the package is in
-Bioconductor.
+- **No `vignettes` directory.** `pkg/vignettes-src/crossarrayEWAS.Rmd` is now
+  written, copied into the generated tree by `tools/build_pkg.py`, and built
+  by `R CMD build`. It simulates a two-array longitudinal cohort rather than
+  shipping data, and its planted signals are recovered by the estimators it
+  demonstrates — see `docs/bioconductor-submission.md` for the author
+  paragraphs still marked in it.
+- **"Use double colon for qualified imports" at `R/clusters.R`.** This was a
+  false positive on `cand[st:min(...)]`, which the linter read as `st::min`.
+  `bin/ewasml.R` now writes it as `seq.int(st, min(...))`, which is identical
+  for `chunk >= 1L`. Pure R syntax, so `bin/ewasml.py` needed no mirror.
 
 ## The warning
 
@@ -76,16 +68,9 @@ global stream, at the cost of a dependency.
 
 ## The notes worth acting on
 
-- **`biocViews`**: BiocCheck suggests adding `ChipOnChip`. The current terms
-  are `DNAMethylation`, `DifferentialMethylation`, `Epigenetics`,
-  `MethylationArray`, `Regression`, `Software`.
-- **ORCID**: add `comment = c(ORCID = "…")` to `Authors@R`.
+- **ORCID**: add `comment = c(ORCID = "…")` to `Authors@R` — owner-only, it
+  goes into the `Authors@R` block in `tools/build_pkg.py`.
 - **Funding**: add the `fnd` role if the work is grant-supported.
-- **`1:n` idiom**: 4 occurrences, all in `R/blocks.R` (two each on lines 25
-  and 220, inside the transition-matrix construction). Both are guarded by a
-  fixed three-state dimension, so neither is a live bug, but the same argument
-  as the double-colon error applies — fix in `bin/ewasml.R` and regenerate, never in
-  the package copy.
 - **Row names out of `demean_by_group()`**: not a BiocCheck finding, but the
   package's new `linalg` tests turned it up. When the input has no row names,
   the result carries the integer group codes as row names, leaked from the
@@ -97,9 +82,12 @@ global stream, at the cost of a dependency.
   55, against a recommended 50. Both are single numerical routines (a
   forward-backward pass and a fused-lasso solver); splitting them to satisfy
   the note would make them harder to compare against `bin/ewasml.py`.
-- **Line length and indentation**: 4 lines over 80 characters, 354 lines not
-  at a multiple of four. The package inherits the pipeline's two-space style;
-  restyling would break body identity with the core.
+- **Line length and indentation**: 5 lines over 80 characters, 393 lines
+  (16%) not at a multiple of four. The package inherits the pipeline's
+  two-space style; restyling would break body identity with the core. Three of
+  the long lines are unavoidable: the vignette title and its
+  `\VignetteIndexEntry` have to match each other, and the third is a URL in
+  generated `man/`.
 
 ## Not gaps, but missing capability
 
@@ -108,8 +96,8 @@ guidelines care about are still absent by choice:
 
 - **Class entry points.** Nothing accepts a `SummarizedExperiment` or
   `GenomicRatioSet`, and `call_regions()`/`call_blocks()` return data frames
-  rather than `GRanges`. Reviewers ask for this specifically; it is the second
-  substantive piece of work after the vignette.
+  rather than `GRanges`. Reviewers ask for this specifically, and with the
+  vignette written it is the largest remaining piece of work.
 - **The harmonisation stage.** `bin/01_harmonise.R` is still straight-line
   script code, so the array-combining step that gives the package its name is
   not in it. Extracting it means separating the `minfi::combineArrays()` call

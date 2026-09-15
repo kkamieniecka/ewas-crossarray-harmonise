@@ -32,11 +32,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Katarzyna Kamieniecka \email{ENTER.YOUR.ADDRESS@example.org}
+\strong{Maintainer}: Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk}
 
 Authors:
 \itemize{
-  \item Katarzyna Kamieniecka \email{ENTER.YOUR.ADDRESS@example.org}
+  \item Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk}
 }
 
 }

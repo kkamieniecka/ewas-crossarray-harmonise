@@ -28,39 +28,68 @@ that, so the first concrete step is a second public repository named exactly
 `crossarrayEWAS` whose root is the generated package.
 
 This is the same split already in use for the Galaxy suite: the pipeline stays
-the source of truth, `tools/build_pkg.py` stays the generator, and a sync
-script pushes the generated tree outward the way `sync-from-pipeline.sh` does
-for the wrappers. Nothing about the generate-from-`bin/ewasml.R` convention
-changes, and `tests/test_pkg_identity.R` keeps guarding it.
+the source of truth, `tools/build_pkg.py` stays the generator, and
+`tools/sync-to-pkg-repo.sh` pushes the generated tree outward the way
+`sync-from-pipeline.sh` does for the wrappers. Nothing about the
+generate-from-`bin/ewasml.R` convention changes, and
+`tests/test_pkg_identity.R` keeps guarding it.
+
+    tools/sync-to-pkg-repo.sh /path/to/crossarrayEWAS [remote]
+
+It refuses a destination not named `crossarrayEWAS` (precheck is case
+sensitive), regenerates and runs the identity test before copying, mirrors
+with `--delete` so a removed core function disappears downstream, installs
+`.github/workflows/r-universe.yml` from `pkg/pkg-repo-template/` if the
+destination has none, and commits nothing — the diff and the version bump stay
+deliberate acts.
 
 The rest of precheck already passes as the package stands: version is
 `0.99.0` (incoming packages must be `x.99.y`), there is no `Remotes` and no
 `Additional_repositories` field, no file is anywhere near the 5 MB ceiling (the
-whole source tarball is 31 KB), and the repository uses no Git LFS.
+whole source tarball is 427 KB with the built vignette in it), and the
+repository uses no Git LFS.
 
-## Blocking: the vignette
+## Done: the vignette
 
-`pkg/crossarrayEWAS/vignettes/` exists but is empty, and `DESCRIPTION` carries
-no `VignetteBuilder`. Precheck only tests that the directory exists, so this
-would pass validation and then fail the source build — and BiocCheck's
-missing-vignette error stands either way. A vignette is also what the reviewer
-reads first.
+`pkg/vignettes-src/crossarrayEWAS.Rmd` is the source; `tools/build_pkg.py`
+copies it into the generated tree and `DESCRIPTION` now declares
+`VignetteBuilder: knitr`. It is prose, not a manual-page index: it states why
+an array indicator cannot repair a design where array generation moves with
+follow-up, simulates a cohort with that structure — subjects on one array
+generation each, exposure varying within subject, probes in co-methylated
+clusters, one short planted region and one long shallow block — and walks
+`fit_within()` through `comethylation_clusters()`, the distance-decaying TV
+denoiser, `call_regions()`, both null constructions and the block HSMM. The
+planted signals come back: effect 0.303 against 0.30 planted in the short
+region, and one 618 kb block over 51 clusters at posterior 0.998 against the
+51 clusters planted. Every chunk runs in about 1.5 s, and `R CMD build`
+re-knits it in 11 s.
 
-It needs a committable example object, since no study data may go into the
-package. The synthetic fixtures from `tests/gen_equivalence_fixtures.py` are
-the seed. Adding it means `VignetteBuilder: knitr` in `DESCRIPTION` and the
-`knitr`/`rmarkdown`/`BiocStyle` suggests that are already declared.
+It is edited in `pkg/vignettes-src/`, never in `pkg/crossarrayEWAS/vignettes/`
+— the generated copy is overwritten on every regeneration.
+
+Six paragraphs are marked `[AUTHOR: ...]` and are yours to write, because they
+are claims about the study and about your own practice rather than about the
+code: the cohort the design was built for; when `var_method = "mom"` is the
+right choice; the effect size you consider reportable, which is what
+`min_effect` encodes; the selection-frequency threshold you report on; how you
+read a block against a region when the two disagree; and the citation
+paragraph for the pipeline and the Galaxy suite. A reviewer reads these first,
+and none of them should be written by anything that has not run the cohort.
 
 ## Blocking: things no build can supply
 
 These are account and identity tasks for the maintainer, and the submission
 cannot be completed without them:
 
-- A real `Authors@R` email — still `ENTER.YOUR.ADDRESS@example.org`. It has to
-  reach the maintainer for as long as the package is in Bioconductor.
-- An account at support.bioconductor.org registered under that same address,
-  which is what BiocCheck's third error is testing.
-- A subscription to the bioc-devel mailing list.
+- An account at support.bioconductor.org registered under exactly the
+  `DESCRIPTION` address. BiocCheck now reports `HTTP 404` for
+  `kkamieni@bradford.ac.uk`, which is a real answer rather than a blocked
+  request: the address is not registered yet. This is the only BiocCheck error
+  left.
+- A subscription to the bioc-devel mailing list. The check reports "cannot
+  determine" for everyone — it needs list-admin credentials — so it is not
+  evidence either way.
 - An ORCID in `comment = c(ORCID = ...)`, and the `fnd` role if the work is
   grant-supported.
 - A disclosure of AI-assisted code. Bioconductor's own guide (pkgrevdocs,
@@ -80,15 +109,21 @@ cannot be completed without them:
   must not reset the caller's stream. Changing it changes the signature, so the
   two stage drivers, the identity test and the cross-language equivalence test
   move in the same commit.
-- **The two cosmetic core fixes**, both in `bin/ewasml.R` and mirrored into
-  `bin/ewasml.py`: `st:min(...)` written as `seq(...)` to silence the
-  false-positive double-colon error, and the four `1:n` occurrences in the
-  transition-matrix construction.
-- **A check under R 4.6.** Everything here has been checked under 4.5.3; three
-  of the four report platforms run 4.6.0. The
-  [Bioconductor R-universe GitHub Action](https://docs.r-universe.dev/bioconductor/#debugging-the-ci)
-  mimics the submission build and can be added to the package repository to see
-  those reports before submitting rather than after.
+- **A check under R 4.6.** Everything here has been checked under 4.5.3;
+  three of the four report platforms run 4.6.0.
+  `pkg/pkg-repo-template/.github/workflows/r-universe.yml` is the
+  [R-universe workflow](https://docs.r-universe.dev/bioconductor/#debugging-the-ci)
+  that mimics the submission build — `universe: bioc` with
+  `organization: bioconductor`, which is what enables the BiocCheck job. The
+  sync script installs it, so pushing the package repository gives the full
+  four-platform report **before** the issue is opened. Do that first: after
+  the issue is open a new report costs a z-level version bump.
+
+The two cosmetic core fixes that stood here are done: `st:min(...)` is now
+`seq.int(st, min(...))`, and the four `1:n` occurrences in the
+transition-matrix construction are `seq_len(3)`. Both were R syntax only, so
+`bin/ewasml.py` needed no mirror, and the identity test and the 142 package
+tests pass unchanged.
 
 ## Then the issue
 
@@ -110,9 +145,10 @@ cannot be completed without them:
    added to the devel manifest, and a BiocCredentials account manages the SSH
    keys for push access.
 
-The sync script matters at step 4: once the staging remote is live, the
-generated tree has to be pushed there, so it should take the target remote as
-an argument rather than hard-coding the GitHub one.
+The sync script matters at step 4: once the staging remote is live the
+generated tree has to go there instead, which is why it takes the remote name
+as its second argument — add the staging remote to the same checkout and pass
+its name.
 
 ## What acceptance unblocks downstream
 

@@ -3,7 +3,7 @@ Type: Package
 Title: Design-Aware Region and Block Detection for Cross-Array Longitudinal EWAS
 Version: 0.99.0
 Authors@R: person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
-    email = "ENTER.YOUR.ADDRESS@example.org")
+    email = "kkamieni@bradford.ac.uk")
 Description: Estimation and region-calling routines for epigenome-wide
     association studies that combine Illumina HumanMethylation450 and
     MethylationEPIC samples and follow subjects over more than one visit.
@@ -22,6 +22,7 @@ Depends: R (>= 4.5.0)
 Imports: Matrix, jsonlite, limma, stats
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
     SummarizedExperiment, GenomicRanges
+VignetteBuilder: knitr
 biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
     MethylationArray, Regression, Software
 BiocType: Software

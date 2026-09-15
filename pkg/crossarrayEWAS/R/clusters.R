@@ -64,7 +64,7 @@ comethylation_clusters <- function(chrom, pos, resid, max_gap = 1000L,
   if (length(cand)) {
     # chunked so the two gathered copies never dominate memory
     for (st in seq(1L, length(cand), by = chunk)) {
-      sl <- cand[st:min(st + chunk - 1L, length(cand))]
+      sl <- cand[seq.int(st, min(st + chunk - 1L, length(cand)))]
       rho[sl] <- rowSums(R[i[sl], , drop = FALSE] * R[j[sl], , drop = FALSE])
     }
   }

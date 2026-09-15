@@ -264,7 +264,7 @@ comethylation_clusters <- function(chrom, pos, resid, max_gap = 1000L,
   if (length(cand)) {
     # chunked so the two gathered copies never dominate memory
     for (st in seq(1L, length(cand), by = chunk)) {
-      sl <- cand[st:min(st + chunk - 1L, length(cand))]
+      sl <- cand[seq.int(st, min(st + chunk - 1L, length(cand)))]
       rho[sl] <- rowSums(R[i[sl], , drop = FALSE] * R[j[sl], , drop = FALSE])
     }
   }
@@ -513,7 +513,7 @@ dist_transitions <- function(d, pi_stat, L) {
   p <- exp(-d / L)
   n <- length(p)
   A <- array(0, dim = c(n, 3L, 3L))
-  for (j in 1:3) for (k in 1:3)
+  for (j in seq_len(3)) for (k in seq_len(3))
     A[, j, k] <- p * (j == k) + (1 - p) * pi_stat[k]
   A
 }
@@ -657,7 +657,9 @@ state_labels <- function(neutral) {
   out <- character(3)
   out[neutral] <- "neutral"
   for (side in c("hypo", "hyper")) {
-    ks <- if (side == "hypo") which((1:3) < neutral) else which((1:3) > neutral)
+    states <- seq_len(3)
+    ks <- if (side == "hypo") which(states < neutral) else
+      which(states > neutral)
     for (k in ks)
       out[k] <- if (length(ks) == 1L) side else sprintf("%s_s%d", side, k - 1L)
   }
