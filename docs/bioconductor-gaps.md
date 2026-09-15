@@ -8,6 +8,9 @@ remaining work is a list rather than a reading of the guidelines.
 Toolchain used: R 4.5.3 (aarch64-apple-darwin20), roxygen2 8.1.0,
 testthat 3.3.1, BiocCheck 1.46.3.
 
+The submission mechanics — the 2026 BiocContributions/R-universe process, and
+the structural change it forces — are in `docs/bioconductor-submission.md`.
+
 ## Where it stands
 
 | check | verdict |

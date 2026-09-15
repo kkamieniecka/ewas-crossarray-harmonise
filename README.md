@@ -243,7 +243,9 @@ expectations, and passes `R CMD check` with no errors, warnings or notes.
 It is not submittable yet: there is no vignette, nothing accepts a
 `SummarizedExperiment`, and the harmonisation stage is still script code.
 `docs/bioconductor-gaps.md` lists every item the checkers reported and who has
-to resolve it.
+to resolve it; `docs/bioconductor-submission.md` is the route to a submission —
+the 2026 BiocContributions/R-universe process, and why the package needs its
+own repository named `crossarrayEWAS` before any of it can start.
 
 Edit the core, never `pkg/crossarrayEWAS/R/`: `tests/test_pkg_identity.R` runs
 in CI and fails if the two have diverged.
