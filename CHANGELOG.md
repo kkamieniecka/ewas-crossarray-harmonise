@@ -7,6 +7,30 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `pkg/R-src/classes.R`: class entry points, the piece Bioconductor reviewers
+  ask for by name. `fit_within_se()` fits from a `SummarizedExperiment` (or a
+  `GenomicRatioSet`, which extends one), resolving exposure, subject and
+  covariates from `colData` by name or by vector, expanding named covariates
+  with `model.matrix()`, refusing covariates with missing values rather than
+  silently shortening the design, reporting which level of a two-level
+  exposure is coded high, and warning when the assay looks like beta values.
+  `probe_coords()` reads coordinates from `rowRanges()` or `rowData()`,
+  `sort_probes()` applies genomic order once — never silently, because the
+  region and block callers read adjacent rows as adjacent probes — and
+  `as_granges()` converts region or block tables to `GRanges`, keeping
+  `max_abs_z` in `metadata()`. The layer is the only part of the package not
+  generated from `bin/ewasml.R`: the core stays base R plus limma so the stage
+  drivers can source it without a Bioconductor stack, so
+  `SummarizedExperiment`, `GenomicRanges`, `S4Vectors` and `IRanges` are
+  `Suggests` behind `requireNamespace()` guards — which also rules out S4
+  methods, since `setMethod()` needs the generic's package at install time.
+  `tools/build_pkg.py` copies `pkg/R-src/` and `pkg/tests-src/` into the
+  generated tree and folds their `@export` tags into the generated
+  `NAMESPACE`; `tests/test_pkg_identity.R` excludes the copied files from the
+  body comparison but asserts they are in the tree, so a copy step that
+  stopped working cannot pass as unchanged. 37 new `testthat` expectations,
+  the load-bearing one being that `fit_within_se()` returns exactly what
+  `fit_within()` returns on the same data.
 - `pkg/vignettes-src/crossarrayEWAS.Rmd`: the package vignette, which
   Bioconductor will not review a package without. It simulates a two-array
   longitudinal cohort — array generation nested in subject, exposure varying

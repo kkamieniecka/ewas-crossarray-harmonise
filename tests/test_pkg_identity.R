@@ -26,6 +26,14 @@ pkg_r <- list.files(file.path(root, "pkg", "crossarrayEWAS", "R"),
                     pattern = "[.]R$", full.names = TRUE)
 pkg_r <- pkg_r[!grepl("-package[.]R$", pkg_r)]
 
+## The class entry points in pkg/R-src are hand-written, not generated from
+## the core, so they are excluded from the comparison by name — but their
+## presence in the tree is checked, since a copy step that silently stopped
+## copying would otherwise look like a pass.
+hand_src <- list.files(file.path(root, "pkg", "R-src"), pattern = "[.]R$")
+hand_missing <- setdiff(hand_src, basename(pkg_r))
+pkg_r <- pkg_r[!(basename(pkg_r) %in% hand_src)]
+
 if (!length(pkg_r)) stop("no package sources found; run tools/build_pkg.py")
 
 e_core <- new.env()
@@ -42,6 +50,11 @@ report <- function(ok, msg) {
   cat(sprintf("%-5s %s\n", if (ok) "ok" else "FAIL", msg))
   if (!ok) fails <<- fails + 1L
 }
+
+report(!length(hand_missing), sprintf(
+  "hand-written sources copied in (%d)%s", length(hand_src),
+  if (length(hand_missing)) sprintf("; missing: %s",
+    paste(hand_missing, collapse = " ")) else ""))
 
 report(identical(n_core, n_pkg), sprintf(
   "same function set (core %d, package %d)%s", length(n_core), length(n_pkg),
@@ -63,9 +76,15 @@ for (k in c("FNV_OFFSET", "FNV_PRIME"))
 ## Everything the exported functions promise must actually be exported.
 ns <- readLines(file.path(root, "pkg", "crossarrayEWAS", "NAMESPACE"))
 exported <- sub("^export\\((.*)\\)$", "\\1", grep("^export\\(", ns, value = TRUE))
-report(all(exported %in% n_pkg),
+## The hand-written layer is exported too, so it counts here even though its
+## bodies are not compared: sourcing it needs no Bioconductor stack, because
+## every SummarizedExperiment and GRanges call sits inside a function body.
+e_hand <- new.env()
+for (f in file.path(root, "pkg", "R-src", hand_src)) sys.source(f, envir = e_hand)
+available <- c(n_pkg, obj(e_hand))
+report(all(exported %in% available),
        sprintf("all %d exports exist (%s)", length(exported),
-               paste(setdiff(exported, n_pkg), collapse = " ")))
+               paste(setdiff(exported, available), collapse = " ")))
 
-cat(sprintf("\n%d checks, %d failed\n", length(n_core) + 4L, fails))
+cat(sprintf("\n%d checks, %d failed\n", length(n_core) + 5L, fails))
 quit(status = if (fails) 1L else 0L)

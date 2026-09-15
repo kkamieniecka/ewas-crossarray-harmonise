@@ -17,15 +17,19 @@ the structural change it forces — are in `docs/bioconductor-submission.md`.
 | check | verdict |
 |---|---|
 | `R CMD check --no-manual` (vignette built and re-built) | **OK** — no errors, warnings or notes |
-| `testthat` (`pkg/crossarrayEWAS/tests`) | 142 expectations in 42 blocks, 0 failures |
-| `tests/test_pkg_identity.R` | 26 checks, 0 failures — package bodies identical to `bin/ewasml.R` |
+| `testthat` (`pkg/crossarrayEWAS/tests`) | 179 expectations in 54 blocks, 0 failures |
+| `tests/test_pkg_identity.R` | 27 checks, 0 failures — generated bodies identical to `bin/ewasml.R`, hand-written sources present |
 | `BiocCheck` | 1 error, 1 warning, 6 notes — itemised below |
 
-`R CMD check` was run with `_R_CHECK_FORCE_SUGGESTS_=false`, because
-`SummarizedExperiment` and `GenomicRanges` are suggested and have no
-`osx-arm64` bioconda build; the submission machines have them, and nothing in
-`R/`, `tests/` or the vignette imports them. Vignette building is no longer
-suppressed: `R CMD build` takes about 11 s with it and the tarball is 427 KB,
+`SummarizedExperiment`, `GenomicRanges`, `S4Vectors` and `IRanges` are
+`Suggests`. `R/classes.R`, `tests/testthat/test-classes.R` and one vignette
+section use them, each behind a `requireNamespace()` guard or a chunk-level
+`eval`, so the package installs, checks and builds its vignette without them —
+which is what the conda build beside the Galaxy wrappers needs. They are
+installed here, so the run above exercised that code rather than skipping it;
+`_R_CHECK_FORCE_SUGGESTS_=false` is still set in `tools/run_checks.sh` so the
+check keeps working where they are absent. Vignette building is no longer
+suppressed: `R CMD build` takes about 11 s with it and the tarball is 429 KB,
 an order of magnitude larger than the code-only 31 KB and still far inside the
 5 MB limit.
 
@@ -39,7 +43,7 @@ subscription to the bioc-devel mailing list, are account tasks that no build
 can do — and the mailing-list check reports "cannot determine" for everyone,
 because it needs list-admin credentials, so it is not evidence either way.
 
-Two errors that stood here before are closed:
+Three findings that stood here before are closed:
 
 - **No `vignettes` directory.** `pkg/vignettes-src/crossarrayEWAS.Rmd` is now
   written, copied into the generated tree by `tools/build_pkg.py`, and built
@@ -51,6 +55,16 @@ Two errors that stood here before are closed:
   false positive on `cand[st:min(...)]`, which the linter read as `st::min`.
   `bin/ewasml.R` now writes it as `seq.int(st, min(...))`, which is identical
   for `chunk >= 1L`. Pure R syntax, so `bin/ewasml.py` needed no mirror.
+- **No class entry points.** `R/classes.R` now takes a `SummarizedExperiment`
+  (or anything extending it, including minfi's `GenomicRatioSet`) into
+  `fit_within()` and returns region and block calls as `GRanges`. It is the
+  one part of the package not generated from `bin/ewasml.R` — the core stays
+  base R plus limma so the stage drivers can source it without a Bioconductor
+  stack — so it lives in `pkg/R-src/`, is copied in verbatim, and is excluded
+  from the body comparison in `tests/test_pkg_identity.R` while its presence
+  in the tree is asserted. The four functions are plain functions, not S4
+  methods: `setMethod()` would need the generic's package at install time,
+  which `Suggests` does not give.
 
 ## The warning
 
@@ -82,8 +96,8 @@ global stream, at the cost of a dependency.
   55, against a recommended 50. Both are single numerical routines (a
   forward-backward pass and a fused-lasso solver); splitting them to satisfy
   the note would make them harder to compare against `bin/ewasml.py`.
-- **Line length and indentation**: 5 lines over 80 characters, 393 lines
-  (16%) not at a multiple of four. The package inherits the pipeline's
+- **Line length and indentation**: 6 lines over 80 characters, 497 lines
+  (17%) not at a multiple of four. The package inherits the pipeline's
   two-space style; restyling would break body identity with the core. Three of
   the long lines are unavoidable: the vignette title and its
   `\VignetteIndexEntry` have to match each other, and the third is a URL in
@@ -91,13 +105,9 @@ global stream, at the cost of a dependency.
 
 ## Not gaps, but missing capability
 
-The package currently exposes the numerical core only. Two things the
-guidelines care about are still absent by choice:
+The package exposes the numerical core plus the class layer over it. One
+thing the guidelines care about is still absent:
 
-- **Class entry points.** Nothing accepts a `SummarizedExperiment` or
-  `GenomicRatioSet`, and `call_regions()`/`call_blocks()` return data frames
-  rather than `GRanges`. Reviewers ask for this specifically, and with the
-  vignette written it is the largest remaining piece of work.
 - **The harmonisation stage.** `bin/01_harmonise.R` is still straight-line
   script code, so the array-combining step that gives the package its name is
   not in it. Extracting it means separating the `minfi::combineArrays()` call

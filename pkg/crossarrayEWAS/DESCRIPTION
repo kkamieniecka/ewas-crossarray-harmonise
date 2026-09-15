@@ -19,9 +19,9 @@ Description: Estimation and region-calling routines for epigenome-wide
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.5.0)
-Imports: Matrix, jsonlite, limma, stats
+Imports: Matrix, jsonlite, limma, methods, stats
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
-    SummarizedExperiment, GenomicRanges
+    SummarizedExperiment, GenomicRanges, S4Vectors, IRanges
 VignetteBuilder: knitr
 biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
     MethylationArray, Regression, Software

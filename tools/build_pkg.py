@@ -413,9 +413,9 @@ Description: Estimation and region-calling routines for epigenome-wide
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.5.0)
-Imports: Matrix, jsonlite, limma, stats
+Imports: Matrix, jsonlite, limma, methods, stats
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
-    SummarizedExperiment, GenomicRanges
+    SummarizedExperiment, GenomicRanges, S4Vectors, IRanges
 VignetteBuilder: knitr
 biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
     MethylationArray, Regression, Software
@@ -975,6 +975,44 @@ def copy_vignettes(pkg):
     return rmd
 
 
+# The class entry points (SummarizedExperiment in, GRanges out) are not
+# derived from the core and cannot be: the core stays base R plus limma so the
+# stage drivers can source it without a Bioconductor stack. They live as
+# ordinary R sources under R_SRC with their tests under TESTS_SRC, are copied
+# in verbatim, and are skipped by tests/test_pkg_identity.R, which compares
+# only the generated files against bin/ewasml.R.
+R_SRC = os.path.join(os.path.dirname(PKG), "R-src")
+TESTS_SRC = os.path.join(os.path.dirname(PKG), "tests-src")
+
+EXPORT_TAG = re.compile(r"^#' *@export *$")
+DEF_LINE = re.compile(r"^([A-Za-z._][A-Za-z0-9._]*) *<- *function")
+
+
+def copy_handwritten(pkg):
+    """Copy the package-only sources in; return (files, tests, exports)."""
+    files = sorted(f for f in os.listdir(R_SRC) if f.endswith(".R"))
+    assert files, f"no .R in {R_SRC}"
+    exports = []
+    for f in files:
+        src = os.path.join(R_SRC, f)
+        tagged = False
+        for line in open(src):
+            if EXPORT_TAG.match(line.rstrip("\n")):
+                tagged = True
+                continue
+            m = DEF_LINE.match(line)
+            if m:
+                if tagged:
+                    exports.append(m.group(1))
+                tagged = False
+        shutil.copy(src, f"{pkg}/R/{f}")
+    tests = sorted(f for f in os.listdir(TESTS_SRC)
+                   if f.startswith("test-") and f.endswith(".R"))
+    for f in tests:
+        shutil.copy(os.path.join(TESTS_SRC, f), f"{pkg}/tests/testthat/{f}")
+    return files, tests, sorted(exports)
+
+
 def write_metadata(pkg, exported):
     open(f"{pkg}/DESCRIPTION", "w").write(DESCRIPTION)
     open(f"{pkg}/NAMESPACE", "w").write(NAMESPACE_TMPL.format(
@@ -1030,14 +1068,20 @@ def main():
         with open(f"{PKG}/R/{f}.R", "w") as fh:
             fh.write(header + "\n" + "\n".join(per_file[f]))
 
+    hand_r, hand_tests, hand_exports = copy_handwritten(PKG)
     exported = sorted(n for n in LAYOUT if n not in INTERNAL)
-    write_metadata(PKG, exported)
+    # The generated NAMESPACE is replaced by roxygenise(); listing the
+    # hand-written exports here keeps the tree installable before that runs.
+    write_metadata(PKG, sorted(exported + hand_exports))
     vig = copy_vignettes(PKG)
-    return exported, {f: len(per_file[f]) for f in FILE_ORDER}, vig
+    return (exported, {f: len(per_file[f]) for f in FILE_ORDER}, vig,
+            (hand_r, hand_tests, hand_exports))
 
 
 if __name__ == "__main__":
-    exp, counts, vig = main()
+    exp, counts, vig, hand = main()
     print(len(exp), "exported:", " ".join(exp))
     print("files:", counts)
     print("vignettes:", " ".join(vig))
+    print("hand-written:", " ".join(hand[0] + hand[1]),
+          "-> exports:", " ".join(hand[2]))

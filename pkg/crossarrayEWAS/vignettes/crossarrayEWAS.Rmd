@@ -15,6 +15,12 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4)
+
+# The class entry points are guarded: SummarizedExperiment and GenomicRanges
+# are Suggests, so the vignette still builds where they are absent.
+has_bioc <- all(vapply(
+  c("SummarizedExperiment", "GenomicRanges", "IRanges", "S4Vectors"),
+  requireNamespace, logical(1), quietly = TRUE))
 ```
 
 # What this package is for
@@ -230,6 +236,53 @@ c(all = within_df(exposure, subject, covars),
   train = within_df(exposure[!held_out], subject[!held_out],
                     covars[!held_out, , drop = FALSE]))
 ```
+
+# Working from a SummarizedExperiment
+
+Everything above is matrices and parallel vectors, which is what the pipeline
+stages pass around. If your data is already a `SummarizedExperiment` — or a
+`GenomicRatioSet`, which extends one — four functions take you in and out
+without unpacking it by hand: `sort_probes()`, `probe_coords()`,
+`fit_within_se()` and `as_granges()`.
+
+```{r se-in, eval = has_bioc}
+se <- SummarizedExperiment::SummarizedExperiment(
+  assays = list(M = M),
+  rowRanges = GenomicRanges::GRanges(chrom, IRanges::IRanges(pos, width = 2L),
+                                     cluster = cl),
+  colData = data.frame(exposure = exposure, subject = subject, covars,
+                       array_type = array_type))
+
+se  <- sort_probes(se)          # genomic order, once, before the fit
+co  <- probe_coords(se)
+fse <- fit_within_se(se, "exposure", "subject",
+                     covars = c("cell_fraction", "smoking_score"))
+identical(round(fse$z[names(fit$z)], 10), round(fit$z, 10))
+```
+
+The fit is the same code: `fit_within_se()` only resolves the object, and the
+identity above is the point of it. Two things it does that a hand-written
+extraction usually forgets — it orders nothing silently, which is why
+`sort_probes()` is a separate call, and it warns when the assay looks like
+beta values, since the region and block callers assume the M scale.
+
+Region and block calls come back as data frames because that is what the
+pipeline writes to CSV. `as_granges()` turns either into a `GRanges`, keeping
+`max_abs_z` in `metadata()` because that is the value a permutation null is
+compared against.
+
+```{r se-out, eval = has_bioc}
+gr <- as_granges(obs)
+gr[order(-abs(GenomicRanges::mcols(gr)$z))][1:3]
+S4Vectors::metadata(gr)$max_abs_z
+```
+
+`SummarizedExperiment` and `GenomicRanges` are `Suggests`, not `Imports`: the
+numerical core is base R plus limma so the pipeline can source it in a conda
+environment with no Bioconductor stack, and the conda build of this package
+inherits that. That is also why these are plain functions rather than S4
+methods on `fit_within()` — `setMethod()` would need the generic's package at
+install time.
 
 # Resampling subjects, not samples
 

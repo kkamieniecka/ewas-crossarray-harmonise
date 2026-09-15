@@ -165,6 +165,9 @@ ewas-crossarray-harmonise/
 │   ├── ewasml.R                  numerical core, R
 │   └── ewasml.py                 numerical core, Python
 ├── pkg/crossarrayEWAS/           R package built from bin/ewasml.R (0.99.0)
+├── pkg/R-src/classes.R           class entry points, hand-written, copied in
+├── pkg/tests-src/                tests for the hand-written layer
+├── pkg/vignettes-src/            vignette source, copied in
 ├── tools/build_pkg.py            generates that package from the core
 ├── tools/run_checks.sh           R CMD check + BiocCheck on the generated package
 ├── tests/test_ewasml.py          numerical property checks (Python core)
@@ -238,7 +241,7 @@ bash tools/run_checks.sh          # R CMD check, then BiocCheck
 Rscript tests/test_pkg_identity.R # package bodies still match bin/ewasml.R
 ```
 
-At 0.99.0 it exports 18 functions with manual pages and 142 `testthat`
+At 0.99.0 it exports 22 functions with manual pages and 179 `testthat`
 expectations, carries a vignette that recovers planted signals from a
 simulated two-array cohort, and passes `R CMD check` — vignette rebuild
 included — with no errors, warnings or notes. `BiocCheck` is down to one
@@ -253,7 +256,21 @@ publishes to:
 tools/sync-to-pkg-repo.sh /path/to/crossarrayEWAS [remote]
 ```
 
-Edit the core, never `pkg/crossarrayEWAS/R/`, and the vignette in
+Four of those exports are not generated. `pkg/R-src/classes.R` takes a
+`SummarizedExperiment` — or a `GenomicRatioSet`, which extends one — into
+`fit_within()` via `fit_within_se()`, reads probe coordinates with
+`probe_coords()`, applies genomic order once with `sort_probes()`, and turns
+region and block calls into `GRanges` with `as_granges()`. It cannot be
+generated from the core: the core is base R plus limma so the stage drivers
+can source it in an environment with no Bioconductor stack, which is also why
+`SummarizedExperiment` and `GenomicRanges` are `Suggests` behind
+`requireNamespace()` guards rather than `Imports`, and why these are plain
+functions rather than S4 methods. Its tests live beside it in
+`pkg/tests-src/`; both directories are copied into the generated tree
+verbatim.
+
+Edit the core, never `pkg/crossarrayEWAS/R/`; the class layer in
+`pkg/R-src/` and its tests in `pkg/tests-src/`; and the vignette in
 `pkg/vignettes-src/`, never `pkg/crossarrayEWAS/vignettes/`:
 `tests/test_pkg_identity.R` runs in CI and fails if the core and the package
 have diverged, and everything in the generated tree is overwritten on the next
