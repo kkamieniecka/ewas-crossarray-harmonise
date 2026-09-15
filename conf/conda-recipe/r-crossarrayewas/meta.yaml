@@ -1,0 +1,76 @@
+{% set version = "0.99.0" %}
+{% set name = "crossarrayEWAS" %}
+
+package:
+  # Named r-* rather than bioconductor-* deliberately: bioconda reserves the
+  # bioconductor- prefix for packages that are in a Bioconductor release, and
+  # generates those recipes automatically from the release manifest. Until
+  # crossarrayEWAS is accepted this recipe is for local builds and personal
+  # channels; on acceptance, delete it and let that automation produce
+  # bioconductor-crossarrayewas instead.
+  name: r-crossarrayewas
+  version: {{ version }}
+
+source:
+  # Built from the package tree in this repository, which tools/build_pkg.py
+  # generates from bin/ewasml.R. Point `url` at a release tarball once there
+  # is a tag to build from; the sha256 line is then mandatory.
+  path: ../../../pkg/{{ name }}
+  # url: https://github.com/kkamieniecka/ewas-crossarray-harmonise/archive/refs/tags/v{{ version }}.tar.gz
+  # sha256: <from the release asset>
+
+build:
+  # Pure R, no compiled code, so one build serves every platform. That is what
+  # lets the tools resolve this package on Apple silicon, where several
+  # arch-specific Bioconductor builds do not exist.
+  noarch: generic
+  number: 0
+  script: $R CMD INSTALL --build .
+
+requirements:
+  host:
+    - r-base >=4.5,<4.6.0a0
+    - r-matrix
+    - r-jsonlite
+    - bioconductor-limma >=3.66.0
+  run:
+    - r-base >=4.5,<4.6.0a0
+    - r-matrix
+    - r-jsonlite
+    - bioconductor-limma >=3.66.0
+
+test:
+  # The testthat suite is not run here: it is not shipped in the install, and
+  # tools/run_checks.sh is where it belongs. This confirms the install loads
+  # and that every entry point the stage drivers call is exported.
+  commands:
+    - $R -e "library('crossarrayEWAS')"
+    - $R -e "stopifnot(all(c('fit_within','pinv','call_regions','call_blocks','read_f64','moderate_variance') %in% getNamespaceExports('crossarrayEWAS')))"
+
+about:
+  home: https://github.com/kkamieniecka/ewas-crossarray-harmonise
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: Estimators for longitudinal, cross-array epigenome-wide association studies
+  description: |
+    The numerical core of a reproducible cross-array harmonisation pipeline
+    for longitudinal EWAS: within-subject region and block finders that
+    replace the cross-sectional bumphunter steps of the EWASGalaxy suite,
+    together with the variance moderation, fold assignment and resampling
+    routines they use. Array type, chip and cohort are absorbed by subject
+    intercepts rather than estimated, which is what makes 450K and EPIC
+    samples comparable within a subject. The same estimators are implemented
+    in Python in the same repository, and the two are held to exact agreement
+    by its test suite.
+  dev_url: https://github.com/kkamieniecka/ewas-crossarray-harmonise
+  doc_url: https://github.com/kkamieniecka/ewas-crossarray-harmonise/blob/main/docs/design-rationale.md
+
+extra:
+  recipe-maintainers:
+    - kkamieniecka
+  notes: |
+    Consumed by the Galaxy tool suite at
+    https://github.com/bioinfbrad/ewas-crossarray-harmonise, whose wrappers
+    vendor the stage drivers but require this package instead of vendoring
+    bin/ewasml.R beside them.

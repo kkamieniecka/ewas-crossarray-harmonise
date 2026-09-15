@@ -13,7 +13,7 @@ testthat 3.3.1, BiocCheck 1.46.3.
 | check | verdict |
 |---|---|
 | `R CMD check --no-build-vignettes --no-manual` | **OK** — no errors, warnings or notes |
-| `testthat` (`pkg/crossarrayEWAS/tests`) | 126 expectations, 0 failures |
+| `testthat` (`pkg/crossarrayEWAS/tests`) | 142 expectations in 42 blocks, 0 failures |
 | `tests/test_pkg_identity.R` | 26 checks, 0 failures — package bodies identical to `bin/ewasml.R` |
 | `BiocCheck` | 3 errors, 1 warning, 8 notes — itemised below |
 
@@ -83,6 +83,13 @@ global stream, at the cost of a dependency.
   fixed three-state dimension, so neither is a live bug, but the same argument
   as the double-colon error applies — fix in `bin/ewasml.R` and regenerate, never in
   the package copy.
+- **Row names out of `demean_by_group()`**: not a BiocCheck finding, but the
+  package's new `linalg` tests turned it up. When the input has no row names,
+  the result carries the integer group codes as row names, leaked from the
+  grouped-sum step; with row names on the input they are preserved correctly.
+  Numerically harmless, and the Python twin cannot show it, so it is pinned by
+  a test and documented rather than fixed — the fix is one line in
+  `bin/ewasml.R`.
 - **Function length**: `fit_block_hsmm()` is 102 lines and `tv_denoise()` is
   55, against a recommended 50. Both are single numerical routines (a
   forward-backward pass and a fused-lasso solver); splitting them to satisfy
@@ -105,6 +112,50 @@ guidelines care about are still absent by choice:
   not in it. Extracting it means separating the `minfi::combineArrays()` call
   and the probe-space bookkeeping from the file layout and provenance record
   around them.
+
+## Consuming the package instead of vendoring the core
+
+`bin/04_dmr_ml.R` and `bin/05_blocks_hsmm.R` now prefer the installed package
+and fall back to sourcing `bin/ewasml.R` when it is absent, recording which
+route ran as `core_source` in the stage's run record. On the stage-05 fixture
+the two routes are interchangeable: with the package installed and no
+`ewasml.R` in reach, `blocks_hsmm.csv` and `openSea_cluster_effects.csv.gz`
+come out byte-identical to the sourced run and all 17 compared fields of
+`hsmm_params.json` agree, `core_source` being the only difference
+(`crossarrayEWAS 0.99.0` against `bin/ewasml.R`).
+
+`pinv()` is exported for this reason — the stage-04 driver uses it to
+residualise the within-transformed design — which is why the package exports
+18 functions rather than the 9 the original plan projected. Only
+`trigamma_inv()`, `fnv1a()`, `soft_threshold()` and `dist_transitions()` stay
+internal.
+
+`conf/conda-recipe/r-crossarrayewas/` builds the package as a conda package.
+It is `noarch: generic`, since the package is pure R, so one build serves every
+platform. The name is `r-crossarrayewas` rather than
+`bioconductor-crossarrayewas` deliberately: bioconda reserves that prefix for
+packages in a Bioconductor release and generates those recipes from the
+release manifest, so on acceptance this recipe should be deleted rather than
+renamed.
+
+**The Galaxy wrappers still vendor the core, and must until the package is in
+a channel.** A `<requirement type="package">r-crossarrayewas</requirement>`
+that resolves nowhere would break dependency resolution for every user of the
+tool, so the switch — two lines in `galaxy/macros.xml`, adding the requirement
+to `requirements_r_ml` and dropping `scripts/ewasml.R` from the tool
+repository's sync list — is deliberately not made yet. It is unblocked by
+either Bioconductor acceptance (after which bioconda's automation publishes
+the package) or by building this recipe into a channel the Galaxy instance can
+see. Nothing breaks in the meantime: the drivers' fallback is the vendored
+core.
+
+What did change in the wrappers is the pin set. `requirements_r_ml` now asks
+for R 4.5 with limma 3.66.0, which is both the floor the package declares and
+the only one of the three tools' requirement sets that resolves on Apple
+silicon — verified by solving and installing it here. `ewas_harmonise` cannot
+follow: `bioconductor-minfi` requires `bioconductor-illuminaio`, which has no
+osx-arm64 build at any version, so that tool remains x86-only and its pins are
+left alone.
 
 ## Regenerating
 

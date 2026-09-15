@@ -238,7 +238,7 @@ bash tools/run_checks.sh          # R CMD check, then BiocCheck
 Rscript tests/test_pkg_identity.R # package bodies still match bin/ewasml.R
 ```
 
-At 0.99.0 it exports 17 functions with manual pages and 126 `testthat`
+At 0.99.0 it exports 18 functions with manual pages and 142 `testthat`
 expectations, and passes `R CMD check` with no errors, warnings or notes.
 It is not submittable yet: there is no vignette, nothing accepts a
 `SummarizedExperiment`, and the harmonisation stage is still script code.
@@ -247,6 +247,24 @@ to resolve it.
 
 Edit the core, never `pkg/crossarrayEWAS/R/`: `tests/test_pkg_identity.R` runs
 in CI and fails if the two have diverged.
+
+`bin/04_dmr_ml.R` and `bin/05_blocks_hsmm.R` use the installed package when
+there is one and source `bin/ewasml.R` when there is not, recording which as
+`core_source` in the stage's run record — so a bare checkout still runs, and a
+conda environment does not need the core file beside the driver. To install it:
+
+```bash
+R CMD INSTALL pkg/crossarrayEWAS                    # from a checkout
+conda build conf/conda-recipe/r-crossarrayewas      # as a conda package
+```
+
+The conda recipe is `noarch: generic` (the package is pure R) and named
+`r-crossarrayewas`, not `bioconductor-crossarrayewas`, because bioconda
+reserves that prefix for packages in a Bioconductor release and generates
+those recipes itself. The Galaxy wrappers do **not** yet require the package —
+a requirement that resolves in no channel would break every user's dependency
+resolution — so they keep vendoring the core until it is published.
+`docs/bioconductor-gaps.md` records the exact switch and what unblocks it.
 
 ## The Galaxy tools
 

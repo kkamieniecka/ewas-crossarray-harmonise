@@ -18,13 +18,21 @@
          the numerical core is banded sparse linear algebra plus limma's
          variance moderation. limma is a hard requirement here because it is
          the default moderation method; the mom method needs only Matrix. -->
+    <!-- R 4.5 with limma 3.66: the only pin set of the three tools that
+         resolves on Apple silicon, verified by solving and installing it
+         (bioconductor-limma 3.66.0 has an osx-arm64 build; 3.62.0, which pairs
+         with R 4.4, does not). It is also the floor the crossarrayEWAS package
+         declares, so these two tools can require the package once it is
+         published to a channel Galaxy can resolve. ewas_harmonise cannot
+         follow: bioconductor-minfi needs bioconductor-illuminaio, which has
+         no osx-arm64 build at any version, so that tool stays x86-only. -->
     <xml name="requirements_r_ml">
         <requirements>
-            <requirement type="package" version="4.4">r-base</requirement>
-            <requirement type="package" version="3.62.0">bioconductor-limma</requirement>
-            <requirement type="package" version="1.7_1">r-matrix</requirement>
-            <requirement type="package" version="1.7.5">r-optparse</requirement>
-            <requirement type="package" version="1.8.9">r-jsonlite</requirement>
+            <requirement type="package" version="4.5">r-base</requirement>
+            <requirement type="package" version="3.66.0">bioconductor-limma</requirement>
+            <requirement type="package" version="1.7_6">r-matrix</requirement>
+            <requirement type="package" version="1.8.2">r-optparse</requirement>
+            <requirement type="package" version="2.0.0">r-jsonlite</requirement>
         </requirements>
     </xml>
 

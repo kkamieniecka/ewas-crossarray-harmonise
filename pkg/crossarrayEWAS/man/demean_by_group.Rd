@@ -14,6 +14,10 @@ identifiers.}
 }
 \value{
 numeric matrix of the same dimensions, each group's mean removed.
+  Row names are carried over from ``X`` when it has them; when it does not,
+  the returned matrix carries the integer group codes as row names, which is
+  an artefact of the grouped-sum step rather than information about the
+  samples.
 }
 \description{
 Applies the within-subject transform to a samples x terms design matrix,

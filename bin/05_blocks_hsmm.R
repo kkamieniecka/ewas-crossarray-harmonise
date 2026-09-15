@@ -33,7 +33,21 @@ log_msg <- function(...) {
 
 here <- dirname(normalizePath(sub("^--file=", "",
         grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
-source(file.path(here, "ewasml.R"))
+
+## The estimators live in the crossarrayEWAS package (pkg/crossarrayEWAS,
+## generated from bin/ewasml.R). Use the installed package when there is one,
+## so a conda- or Galaxy-resolved environment does not need the core file
+## beside this script; fall back to sourcing the core, which is how a bare
+## checkout and the equivalence tests run. Which route was taken is recorded
+## in the run record, because the two are only identical as long as
+## tests/test_pkg_identity.R passes.
+core_source <- if (requireNamespace("crossarrayEWAS", quietly = TRUE)) {
+  suppressPackageStartupMessages(library(crossarrayEWAS))
+  sprintf("crossarrayEWAS %s", utils::packageVersion("crossarrayEWAS"))
+} else {
+  source(file.path(here, "ewasml.R"))
+  "bin/ewasml.R"
+}
 
 # ---------------------------------------------------------------------------
 opt_list <- list(
@@ -283,7 +297,7 @@ write(jsonlite::toJSON(list(
   n_blocks = nrow(bl), cross_array_r = r_pearson,
   cross_array_sign_concordance = sign_conc, legacy_fixed_collapse = legacy,
   covars_used = cov_names, var_method = opt$var_method,
-  implementation = "R", args = opt,
+  implementation = "R", core_source = core_source, args = opt,
   runtime_s = round(as.numeric(difftime(Sys.time(), T0, units = "secs")), 1)),
   # na = "null": a skipped array leaves cross_array_r as NA, and jsonlite
   # would otherwise write the string "NA" where the Python writes null
