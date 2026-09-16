@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Author metadata: `DESCRIPTION`, `CITATION.cff` and the vignette now name
+  Katarzyna Kamieniecka (ORCID 0009-0004-2454-5950, `aut`/`cre`) and
+  Krzysztof Poterlowicz (ORCID 0000-0001-6173-5674, `aut`), with the Bradford
+  affiliation in `CITATION.cff`. This closes the BiocCheck ORCID note, taking
+  it to 5 notes. `Authors@R` is written by `tools/build_pkg.py`.
 - `pkg/R-src/classes.R`: class entry points, the piece Bioconductor reviewers
   ask for by name. `fit_within_se()` fits from a `SummarizedExperiment` (or a
   `GenomicRatioSet`, which extends one), resolving exposure, subject and

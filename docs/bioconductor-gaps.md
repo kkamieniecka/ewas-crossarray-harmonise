@@ -19,7 +19,7 @@ the structural change it forces — are in `docs/bioconductor-submission.md`.
 | `R CMD check --no-manual` (vignette built and re-built) | **OK** — no errors, warnings or notes |
 | `testthat` (`pkg/crossarrayEWAS/tests`) | 179 expectations in 54 blocks, 0 failures |
 | `tests/test_pkg_identity.R` | 27 checks, 0 failures — generated bodies identical to `bin/ewasml.R`, hand-written sources present |
-| `BiocCheck` | 1 error, 1 warning, 6 notes — itemised below |
+| `BiocCheck` | 1 error, 1 warning, 5 notes — itemised below |
 
 `SummarizedExperiment`, `GenomicRanges`, `S4Vectors` and `IRanges` are
 `Suggests`. `R/classes.R`, `tests/testthat/test-classes.R` and one vignette
@@ -43,7 +43,7 @@ subscription to the bioc-devel mailing list, are account tasks that no build
 can do — and the mailing-list check reports "cannot determine" for everyone,
 because it needs list-admin credentials, so it is not evidence either way.
 
-Three findings that stood here before are closed:
+Four findings that stood here before are closed:
 
 - **No `vignettes` directory.** `pkg/vignettes-src/crossarrayEWAS.Rmd` is now
   written, copied into the generated tree by `tools/build_pkg.py`, and built
@@ -55,6 +55,13 @@ Three findings that stood here before are closed:
   false positive on `cand[st:min(...)]`, which the linter read as `st::min`.
   `bin/ewasml.R` now writes it as `seq.int(st, min(...))`, which is identical
   for `chunk >= 1L`. Pure R syntax, so `bin/ewasml.py` needed no mirror.
+- **No ORCID in `Authors@R`.** `DESCRIPTION` now carries
+  `person("Katarzyna", "Kamieniecka", role = c("aut", "cre"), comment =
+  c(ORCID = "0009-0004-2454-5950"))` and
+  `person("Krzysztof", "Poterlowicz", role = "aut", comment = c(ORCID =
+  "0000-0001-6173-5674"))`. Both also appear in `CITATION.cff` and on the
+  vignette. `Authors@R` is written by `tools/build_pkg.py`, so a further
+  author or the `fnd` role goes there, not into the generated `DESCRIPTION`.
 - **No class entry points.** `R/classes.R` now takes a `SummarizedExperiment`
   (or anything extending it, including minfi's `GenomicRatioSet`) into
   `fit_within()` and returns region and block calls as `GRanges`. It is the
@@ -82,9 +89,9 @@ global stream, at the cost of a dependency.
 
 ## The notes worth acting on
 
-- **ORCID**: add `comment = c(ORCID = "…")` to `Authors@R` — owner-only, it
-  goes into the `Authors@R` block in `tools/build_pkg.py`.
-- **Funding**: add the `fnd` role if the work is grant-supported.
+- **Funding**: add the `fnd` role if the work is grant-supported — owner-only,
+  it goes into the `Authors@R` block in `tools/build_pkg.py`, which is also
+  where a further author would be added.
 - **Row names out of `demean_by_group()`**: not a BiocCheck finding, but the
   package's new `linalg` tests turned it up. When the input has no row names,
   the result carries the integer group codes as row names, leaked from the

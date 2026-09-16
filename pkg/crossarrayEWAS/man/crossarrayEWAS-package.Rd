@@ -32,11 +32,12 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk}
+\strong{Maintainer}: Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk} (\href{https://orcid.org/0009-0004-2454-5950}{ORCID})
 
 Authors:
 \itemize{
-  \item Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk}
+  \item Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk} (\href{https://orcid.org/0009-0004-2454-5950}{ORCID})
+  \item Krzysztof Poterlowicz (\href{https://orcid.org/0000-0001-6173-5674}{ORCID})
 }
 
 }

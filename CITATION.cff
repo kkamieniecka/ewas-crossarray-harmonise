@@ -7,9 +7,16 @@ type: software
 authors:
   - family-names: Kamieniecka
     given-names: Katarzyna
-    # Add before the first tagged release, if you want them cited:
-    # affiliation: AFFILIATION
-    # orcid: 'https://orcid.org/0000-0000-0000-0000'
+    orcid: 'https://orcid.org/0009-0004-2454-5950'
+    affiliation: >-
+      School of Chemistry and Biosciences, Faculty of Life Sciences,
+      University of Bradford, Bradford, UK
+  - family-names: Poterlowicz
+    given-names: Krzysztof
+    orcid: 'https://orcid.org/0000-0001-6173-5674'
+    affiliation: >-
+      School of Chemistry and Biosciences, Faculty of Life Sciences,
+      University of Bradford, Bradford, UK
 repository-code: 'https://github.com/kkamieniecka/ewas-crossarray-harmonise'
 license: MIT
 version: 0.1.0

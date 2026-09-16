@@ -396,8 +396,12 @@ DESCRIPTION = """Package: crossarrayEWAS
 Type: Package
 Title: Design-Aware Region and Block Detection for Cross-Array Longitudinal EWAS
 Version: 0.99.0
-Authors@R: person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
-    email = "kkamieni@bradford.ac.uk")
+Authors@R: c(
+    person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
+           email = "kkamieni@bradford.ac.uk",
+           comment = c(ORCID = "0009-0004-2454-5950")),
+    person("Krzysztof", "Poterlowicz", role = "aut",
+           comment = c(ORCID = "0000-0001-6173-5674")))
 Description: Estimation and region-calling routines for epigenome-wide
     association studies that combine Illumina HumanMethylation450 and
     MethylationEPIC samples and follow subjects over more than one visit.
