@@ -19,7 +19,7 @@ the structural change it forces — are in `docs/bioconductor-submission.md`.
 | `R CMD check --no-manual` (vignette built and re-built) | **OK** — no errors, warnings or notes |
 | `testthat` (`pkg/crossarrayEWAS/tests`) | 180 expectations in 55 blocks, 0 failures |
 | `tests/test_pkg_identity.R` | 27 checks, 0 failures — generated bodies identical to `bin/ewasml.R`, hand-written sources present |
-| `BiocCheck` | 1 error, **0 warnings**, 5 notes — itemised below |
+| `BiocCheck` | **0 errors, 0 warnings, 5 notes** — itemised below |
 
 `SummarizedExperiment`, `GenomicRanges`, `S4Vectors` and `IRanges` are
 `Suggests`. `R/classes.R`, `tests/testthat/test-classes.R` and one vignette

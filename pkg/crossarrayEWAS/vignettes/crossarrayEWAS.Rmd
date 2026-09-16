@@ -41,10 +41,28 @@ rather than modelled. What is left is estimated once, grouped by observed
 co-methylation, and turned into regions and long-range blocks by two
 estimators that place boundaries rather than threshold a smooth curve.
 
-[AUTHOR: one paragraph on the cohort this was built for, and the sentence a
-reader needs about why the 450K/EPIC split there is not exchangeable with
-exposure. Keep study specifics out of the package -- the point here is the
-design, not the dataset.]
+<!-- DRAFT for the author. Numbers in brackets are measured from
+results/GSE237561/ (run_config.json, logs/harmonise.log, method_comparison.csv);
+the judgements around them are not, and are yours to confirm or overwrite. -->
+
+The design this was written for is a longitudinal cohort, sampled repeatedly
+within subject over a recruitment window long enough that the array generation
+changed mid-study: earlier subjects assayed on 450K, later subjects on EPIC,
+and no subject spanning the two. [AUTHOR: confirm this is the design you want
+stated, and whether to name the validation cohort here -- the package ships no
+study data, and the cohort behind the manuscript (126 samples from 38
+subjects, 92 arrays on 450K and 34 on EPIC) is described there rather than
+here.] What makes that split non-exchangeable with exposure is that one
+variable decides both: subjects recruited later sit on EPIC *and* have longer
+treatment duration, so an array indicator and the contrast of interest are
+partly the same column. [AUTHOR: confirm -- in the validation cohort neither a
+subject nor a chip spans the two generations, so cohort is nested inside array
+generation rather than crossed with it, and a batch correction taken on cohort
+is not identifiable there.] Identifying the effect within subject is the
+answer to that, and the cost is explicit: anything constant across a subject's
+visits, including any between-subject contrast, cannot be estimated at all.
+[AUTHOR: confirm you want the cost stated this plainly here rather than in the
+discussion.]
 
 ```{r load}
 library(crossarrayEWAS)
@@ -164,8 +182,20 @@ where <- ifelse(beta_true > 0.1, "region",
 round(tapply(abs(fit$z), where, median), 3)
 ```
 
-[AUTHOR: a sentence on what `var_method = "mom"` is for, and when you would
-choose it over the default `"limma"` shrinkage.]
+<!-- DRAFT for the author: the defaults are measured (bin/04_dmr_ml.R
+--var-method, default "limma"), the recommendation is yours. -->
+
+`var_method` chooses how the per-probe residual variance is moderated before
+the z statistics are formed. The default `"limma"` calls `limma::squeezeVar()`,
+the reference implementation of that model -- maintained, well behaved in the
+degenerate cases, and already a dependency of the harmonisation stage. `"mom"`
+is the method-of-moments fit ported from the Python twin of this core, and it
+exists so the two implementations can be compared arithmetically on identical
+input. [AUTHOR: confirm the rule you want readers to follow -- the stage
+drivers default to `"limma"` and the published analysis was run with it, so
+`"mom"` is for reproducing the Python path or for a deployment without the
+Bioconductor stack, and should be named in the methods if a reported result
+uses it.]
 
 # Co-methylation clusters
 
@@ -212,9 +242,16 @@ head(reg[order(-abs(reg$z)),
 ```
 
 `min_effect` is on the M-value scale and is a scientific choice, not a tuning
-knob. [AUTHOR: state the effect size you consider reportable in your own
-setting and why -- a reviewer will ask, and the 0.05 used here is only a
-placeholder that keeps the example from returning nothing.]
+knob. [AUTHOR: the number and the reasoning are yours; what follows is a draft in
+the units the run used.] In the clozapine analysis `min_effect` was 0.05 on
+the M-value scale per 100 days of treatment: a segment has to move at least
+that much to be called, whatever its z. At mid-range methylation that is about
+0.9 percentage points of beta per 100 days -- roughly 3 points over a year and
+6 over two, falling to about 2 and 4 points at beta 0.2 or 0.8 [AUTHOR:
+confirm you want these conversions quoted, and at which beta]. [AUTHOR: give
+the reason the floor sits there -- assay reproducibility, residual
+cell-composition effect, or the smallest change you would act on -- and say
+whether you hold it fixed across analyses or set it per exposure.]
 
 `lam0` is cross-validated over held-out **subjects** in the pipeline rather
 than fixed as it is here. `fold_assign()` is the split it uses: deterministic
@@ -337,8 +374,15 @@ head(reg[order(-reg$stability, -abs(reg$z)),
          c("chr", "start", "end", "n_probes", "z", "stability")], 5)
 ```
 
-[AUTHOR: the selection-frequency threshold you report on, and whether you use
-it as a filter or as an annotation on the region table.]
+[AUTHOR: the threshold and its use are yours; draft follows.] The published
+run resampled 50 subject subsamples at half the cohort; the eight used above
+only keep the example fast [AUTHOR: confirm 50 is the number you report].
+Selection frequency is carried as a column beside z rather than used as a
+filter, so a region that survives the permutation null but is unstable across
+subsamples stays visible and is read as exactly that. [AUTHOR: confirm, or
+replace with the threshold you filter at and say which -- 0.6 and 0.8 are both
+conventional in the stability-selection literature, and the choice changes
+what "reported" means in the paper.]
 
 # Long-range blocks
 
@@ -401,15 +445,36 @@ if (nrow(bl))
   segments(bl$start / 1e6, 0, bl$end / 1e6, 0, col = "#d95f02", lwd = 4)
 ```
 
-[AUTHOR: the interpretation paragraph -- what a block means relative to a
-region in your analysis, and what you do when the two disagree.]
+[AUTHOR: the interpretation is yours; draft follows.] A region and a block
+are not two attempts at the same quantity. Regions are called on every
+harmonised probe at the resolution of a few probes -- median 84 bp over 3
+probes in the published run -- and locate a focal effect. Blocks are called on
+open-sea probes only, at cluster resolution, and in the same run returned 8
+blocks of median 62 kb against 207 regions [AUTHOR: confirm you want the run's
+geometry quoted here, or substitute your own]. A block is therefore evidence
+of a shallow shift across a domain that is largely unmeasured between
+clusters, and a region is evidence of a local one; the two can coexist,
+and neither subsumes the other. [AUTHOR: say what you do when they disagree --
+a block containing no region, or a strong region inside a neutral block. Both
+defensible readings need stating explicitly: treat them as independent lines
+of evidence and report both, or require a region inside a block before calling
+the block interpretable. A reviewer will read the results against whichever
+you choose.]
 
 # Relationship to the pipeline and the Galaxy suite
 
 These functions are the numerical core of a Nextflow pipeline whose earlier
 stages harmonise 450K and EPIC intensities, and of a Galaxy tool suite that
-wraps the same stage drivers. [AUTHOR: one or two sentences plus the links and
-reference you want cited here.]
+wraps the same stage drivers. The pipeline is
+[kkamieniecka/ewas-crossarray-harmonise](https://github.com/kkamieniecka/ewas-crossarray-harmonise),
+which generates this package from its numerical core, and the wrappers are
+published as a Tool Shed-installable suite at
+[bioinfbrad/ewas-crossarray-harmonise](https://github.com/bioinfbrad/ewas-crossarray-harmonise);
+both extend the EWASGalaxy tool suite (Murat *et al.*, *bioRxiv* 2019,
+doi:10.1101/553784). [AUTHOR: confirm the links, and add the manuscript once
+it has a DOI -- until then either cite it as in preparation or leave it out.
+If you tag a release and mint a Zenodo DOI, cite that here as well, since the
+manuscript's availability section promises one.]
 
 # Session info
 

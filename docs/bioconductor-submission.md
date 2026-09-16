@@ -90,12 +90,10 @@ These are account and identity tasks for the maintainer, and the submission
 cannot be completed without them:
 
 - An account at support.bioconductor.org registered under exactly the
-  `DESCRIPTION` address — **done**; the 404 for `kkamieni@bradford.ac.uk` is
-  gone. What replaced it, and what is now the only BiocCheck error left, is
-  the second half of the same requirement: `crossarrayEWAS` has to be added to
-  **Watched Tags** in that support-site profile, so questions tagged with the
-  package reach its maintainer. Add the tag; the check passes on the next
-  run.
+  `DESCRIPTION` address, with `crossarrayEWAS` in that profile's **Watched
+  Tags** — **both done**. BiocCheck now reports `Checking for support site
+  registration... OK` and the package is at **0 errors, 0 warnings, 5
+  notes**.
 - A subscription to the bioc-devel mailing list. The check reports "cannot
   determine" for everyone — it needs list-admin credentials — so it is not
   evidence either way.
