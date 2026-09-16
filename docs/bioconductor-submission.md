@@ -27,6 +27,13 @@ repository root. `pkg/crossarrayEWAS` inside this repository satisfies none of
 that, so the first concrete step is a second public repository named exactly
 `crossarrayEWAS` whose root is the generated package.
 
+**Done.** The repository is
+[bioinfbrad/crossarrayEWAS](https://github.com/bioinfbrad/crossarrayEWAS),
+public, with the generated package at its root and the R-universe workflow
+installed; 0.99.0 was published there from pipeline commit `06f55ed`. Re-sync
+before the issue if the package moves again, and remember the version bump
+once builds are being triggered deliberately.
+
 This is the same split already in use for the Galaxy suite: the pipeline stays
 the source of truth, `tools/build_pkg.py` stays the generator, and
 `tools/sync-to-pkg-repo.sh` pushes the generated tree outward the way
