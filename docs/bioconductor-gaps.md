@@ -17,9 +17,9 @@ the structural change it forces — are in `docs/bioconductor-submission.md`.
 | check | verdict |
 |---|---|
 | `R CMD check --no-manual` (vignette built and re-built) | **OK** — no errors, warnings or notes |
-| `testthat` (`pkg/crossarrayEWAS/tests`) | 179 expectations in 54 blocks, 0 failures |
+| `testthat` (`pkg/crossarrayEWAS/tests`) | 180 expectations in 55 blocks, 0 failures |
 | `tests/test_pkg_identity.R` | 27 checks, 0 failures — generated bodies identical to `bin/ewasml.R`, hand-written sources present |
-| `BiocCheck` | 1 error, 1 warning, 5 notes — itemised below |
+| `BiocCheck` | 1 error, **0 warnings**, 5 notes — itemised below |
 
 `SummarizedExperiment`, `GenomicRanges`, `S4Vectors` and `IRanges` are
 `Suggests`. `R/classes.R`, `tests/testthat/test-classes.R` and one vignette
@@ -73,19 +73,24 @@ Four findings that stood here before are closed:
   methods: `setMethod()` would need the generic's package at install time,
   which `Suggests` does not give.
 
-## The warning
+## The warning — closed
 
-**`set.seed()` inside `stability_selection()` (`R/resample.R`).**
-Bioconductor forbids a package function from resetting the caller's random
-number stream, and it is right to: the function currently overwrites the
-session seed on every call. The convention is to drop the `seed` argument and
-document that the caller seeds, which makes the bootstrap reproducible from
-outside rather than from inside. That changes the signature, so it is a
-decision for the pipeline rather than a mechanical fix — the two stage drivers
-pass `--seed` through to it, and `tests/test_pkg_identity.R` plus the
-cross-language equivalence test both have to be updated in the same commit.
-`withr::with_seed()` preserves the current behaviour without touching the
-global stream, at the cost of a dependency.
+**`set.seed()` inside `stability_selection()` (`R/resample.R`).** Closed by
+dropping the `seed` argument: the function now draws from the caller's stream
+and its documentation says to seed before calling. `withr::with_seed()` would
+have preserved the old signature, but only at the cost of a dependency added
+to hide a reset that should not happen at all.
+
+`bin/04_dmr_ml.R` calls `set.seed(opt$seed + 7L)` immediately before the call,
+so the draws are the same sequence the argument produced and stage-04 output
+is unchanged. `bin/ewasml.py` keeps its `seed`: `np.random.default_rng()`
+builds a generator local to the call and never touches global state, so the
+hazard does not exist on that side — the divergence is recorded in a comment
+in both files. The generated test that asserted reproducibility from the
+argument now seeds the caller twice, and a second test asserts the stream is
+where the caller left it. Verified after the change: `R CMD check` **Status:
+OK**, BiocCheck 0 warnings, identity test 27 checks, cross-language
+equivalence 55 checks, all passing.
 
 ## The notes worth acting on
 

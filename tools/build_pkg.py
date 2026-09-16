@@ -262,13 +262,15 @@ DOCS = {
   title="Subject-level stability selection",
   desc=("Meinshausen-Buhlmann stability selection resampling SUBJECTS, not "
         "samples: resampling samples would split a subject's visit series "
-        "across train and test and leak the within-subject effect under test."),
+        "across train and test and leak the within-subject effect under test. "
+        "Draws come from the caller's RNG stream: call set.seed() beforehand "
+        "to make a run reproducible. There is deliberately no seed argument, "
+        "because a library function must not reset its caller's stream."),
   params=[("fit_fn", "function of a subject subset returning a character "
            "vector of selected region keys."),
           ("subjects", "vector of subject identifiers."),
           ("n_boot", "number of subsamples."),
-          ("frac", "fraction of subjects per subsample."),
-          ("seed", "RNG seed.")],
+          ("frac", "fraction of subjects per subsample.")],
   ret="list with ``freq`` (named selection frequencies) and ``n_boot``.",
   ex='subjects <- sprintf("S%02d", 1:12)\nfit_fn <- function(sub) if (length(sub) > 3) c("chr1:100-200") else character(0)\nstability_selection(fit_fn, subjects, n_boot = 20L)$freq'),
  "fit_block_hsmm": dict(
@@ -891,11 +893,25 @@ test_that("stability selection returns frequencies in [0, 1]", {
   expect_lt(ss$freq[["sometimes"]], 1)
 })
 
-test_that("stability selection is reproducible for a given seed", {
+test_that("stability selection is reproducible from the caller's seed", {
   subjects <- sprintf("S%02d", 1:12)
   fit_fn <- function(sub) sub[1]
-  expect_identical(stability_selection(fit_fn, subjects, 20L, seed = 3L)$freq,
-                   stability_selection(fit_fn, subjects, 20L, seed = 3L)$freq)
+  set.seed(3L)
+  a <- stability_selection(fit_fn, subjects, 20L)$freq
+  set.seed(3L)
+  b <- stability_selection(fit_fn, subjects, 20L)$freq
+  expect_identical(a, b)
+})
+
+test_that("stability selection leaves the caller's stream where it found it", {
+  subjects <- sprintf("S%02d", 1:12)
+  fit_fn <- function(sub) sub[1]
+  set.seed(11L)
+  before <- runif(1)
+  set.seed(11L)
+  invisible(stability_selection(fit_fn, subjects, 5L))
+  set.seed(11L)
+  expect_identical(runif(1), before)
 })
 ''',
 "blocks": '''block_fit <- function(n = 40) {

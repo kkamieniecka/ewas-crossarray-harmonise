@@ -338,8 +338,11 @@ fit_subset <- function(sub) {
   }
   found
 }
-ss <- stability_selection(fit_subset, subj, n_boot = opt$n_boot, frac = 0.5,
-                          seed = opt$seed + 7L)
+# seeded here rather than inside stability_selection(): the offset keeps the
+# subsample draws off the stream the permutation null already consumed, and
+# seeding at the call site gives the same sequence the argument used to.
+set.seed(opt$seed + 7L)
+ss <- stability_selection(fit_subset, subj, n_boot = opt$n_boot, frac = 0.5)
 reg$stability <- ifelse(keys %in% names(ss$freq), ss$freq[keys], 0)
 reg$stability[is.na(reg$stability)] <- 0
 log_msg(sprintf("stability: median=%.2f, %d regions selected in >=60%% of subsamples",

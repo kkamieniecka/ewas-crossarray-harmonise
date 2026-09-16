@@ -83,10 +83,12 @@ These are account and identity tasks for the maintainer, and the submission
 cannot be completed without them:
 
 - An account at support.bioconductor.org registered under exactly the
-  `DESCRIPTION` address. BiocCheck now reports `HTTP 404` for
-  `kkamieni@bradford.ac.uk`, which is a real answer rather than a blocked
-  request: the address is not registered yet. This is the only BiocCheck error
-  left.
+  `DESCRIPTION` address — **done**; the 404 for `kkamieni@bradford.ac.uk` is
+  gone. What replaced it, and what is now the only BiocCheck error left, is
+  the second half of the same requirement: `crossarrayEWAS` has to be added to
+  **Watched Tags** in that support-site profile, so questions tagged with the
+  package reach its maintainer. Add the tag; the check passes on the next
+  run.
 - A subscription to the bioc-devel mailing list. The check reports "cannot
   determine" for everyone — it needs list-admin credentials — so it is not
   evidence either way.
@@ -111,10 +113,9 @@ cannot be completed without them:
   apply genomic order. They are plain functions behind `requireNamespace()`
   guards rather than S4 methods, because those packages are `Suggests`; the
   vignette has a section on them.
-- **The `set.seed()` warning** in `stability_selection()`. A package function
-  must not reset the caller's stream. Changing it changes the signature, so the
-  two stage drivers, the identity test and the cross-language equivalence test
-  move in the same commit.
+- **The `set.seed()` warning — done.** `stability_selection()` has no `seed`
+  argument; `bin/04_dmr_ml.R` seeds immediately before the call and stage-04
+  output is unchanged. BiocCheck is at 0 warnings.
 - **A check under R 4.6.** Everything here has been checked under 4.5.3;
   three of the four report platforms run 4.6.0.
   `pkg/pkg-repo-template/.github/workflows/r-universe.yml` is the

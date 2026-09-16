@@ -329,8 +329,8 @@ fit_subset <- function(sub) {
     logical(1))]
 }
 
-ss <- stability_selection(fit_subset, subject, n_boot = 8L, frac = 0.5,
-                          seed = 1L)
+set.seed(1L)
+ss <- stability_selection(fit_subset, subject, n_boot = 8L, frac = 0.5)
 reg$stability <- ifelse(keys %in% names(ss$freq), ss$freq[keys], 0)
 reg$stability[is.na(reg$stability)] <- 0
 head(reg[order(-reg$stability, -abs(reg$z)),

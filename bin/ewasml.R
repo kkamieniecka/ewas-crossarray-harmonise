@@ -480,9 +480,15 @@ naive_permutation <- function(exposure, subject = NULL) {
 #' selected on that subsample. Subsampling subjects (not samples) is required:
 #' resampling samples would split a subject's visit series across train and
 #' test and leak the within-subject effect being tested.
-stability_selection <- function(fit_fn, subjects, n_boot = 100L, frac = 0.5,
-                                seed = 1L) {
-  set.seed(seed)
+#'
+#' Draws come from the caller's RNG stream: call set.seed() before this
+#' function to make a run reproducible. It takes no seed argument because a
+#' library function must not reset the stream its caller is using -- doing so
+#' silently changes every later draw in the session, and BiocCheck flags it.
+#' The Python twin keeps its `seed` argument: numpy's default_rng() builds a
+#' generator local to the call and never touches global state, so the hazard
+#' this avoids does not exist there.
+stability_selection <- function(fit_fn, subjects, n_boot = 100L, frac = 0.5) {
   uniq <- sort(unique(subjects))
   k <- max(2L, floor(frac * length(uniq)))
   counts <- list()

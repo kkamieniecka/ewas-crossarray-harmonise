@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **`stability_selection()` no longer takes a `seed`** and no longer calls
+  `set.seed()`. A library function must not reset its caller's random number
+  stream; BiocCheck flags it and is right to. The function now draws from the
+  caller's stream, `bin/04_dmr_ml.R` calls `set.seed(opt$seed + 7L)`
+  immediately before it — the same sequence the argument produced, so stage-04
+  output is unchanged — and the vignette and the cross-language equivalence
+  test seed at their call sites. `bin/ewasml.py` keeps its `seed`, because
+  `np.random.default_rng()` is local to the call and touches no global state;
+  the divergence is commented in both cores. A new generated test asserts the
+  caller's stream is where it was left. BiocCheck is now at 1 error, 0
+  warnings, 5 notes, with `R CMD check` Status OK.
+
 ### Added
 - Author metadata: `DESCRIPTION`, `CITATION.cff` and the vignette now name
   all three authors in the manuscript's order, each with a Bradford address

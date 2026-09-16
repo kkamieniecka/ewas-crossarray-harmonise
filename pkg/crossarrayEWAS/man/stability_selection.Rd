@@ -4,7 +4,7 @@
 \alias{stability_selection}
 \title{Subject-level stability selection}
 \usage{
-stability_selection(fit_fn, subjects, n_boot = 100L, frac = 0.5, seed = 1L)
+stability_selection(fit_fn, subjects, n_boot = 100L, frac = 0.5)
 }
 \arguments{
 \item{fit_fn}{function of a subject subset returning a character vector of
@@ -15,8 +15,6 @@ selected region keys.}
 \item{n_boot}{number of subsamples.}
 
 \item{frac}{fraction of subjects per subsample.}
-
-\item{seed}{RNG seed.}
 }
 \value{
 list with ``freq`` (named selection frequencies) and ``n_boot``.
@@ -24,7 +22,10 @@ list with ``freq`` (named selection frequencies) and ``n_boot``.
 \description{
 Meinshausen-Buhlmann stability selection resampling SUBJECTS, not samples:
 resampling samples would split a subject's visit series across train and
-test and leak the within-subject effect under test.
+test and leak the within-subject effect under test. Draws come from the
+caller's RNG stream: call set.seed() beforehand to make a run reproducible.
+There is deliberately no seed argument, because a library function must not
+reset its caller's stream.
 }
 \details{
 Notes carried over from the pipeline source:
@@ -35,6 +36,14 @@ fit_fn(subject_subset) must return a character vector of region keys
 selected on that subsample. Subsampling subjects (not samples) is required:
 resampling samples would split a subject's visit series across train and
 test and leak the within-subject effect being tested.
+
+Draws come from the caller's RNG stream: call set.seed() before this
+function to make a run reproducible. It takes no seed argument because a
+library function must not reset the stream its caller is using -- doing so
+silently changes every later draw in the session, and BiocCheck flags it.
+The Python twin keeps its `seed` argument: numpy's default_rng() builds a
+generator local to the call and never touches global state, so the hazard
+this avoids does not exist there.
 }
 \examples{
 subjects <- sprintf("S\%02d", 1:12)

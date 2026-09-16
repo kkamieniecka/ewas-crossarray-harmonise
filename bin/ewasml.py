@@ -545,6 +545,9 @@ def naive_permutation(exposure: np.ndarray, subject: np.ndarray,
 # ----------------------------------------------------------------------------
 def stability_selection(fit_fn, subjects: np.ndarray, n_boot: int = 100,
                         frac: float = 0.5, seed: int = 1) -> tuple:
+    # The R twin has no `seed`: set.seed() there mutates the caller's global
+    # stream, which a library function must not do. default_rng() below is
+    # local to this call, so the argument is safe to keep on this side.
     """
     Meinshausen-Buhlmann stability selection at the SUBJECT level.
 

@@ -176,10 +176,11 @@ report("naive_permutation preserves the exposure multiset",
 
 ## ---- 7. stability_selection scheme ---------------------------------------
 seen <- list()
+set.seed(3L)
 ss <- stability_selection(function(sub) {
   seen[[length(seen) + 1L]] <<- sub
   c("A", "B")
-}, des$subject, n_boot = 20L, frac = 0.5, seed = 3L)
+}, des$subject, n_boot = 20L, frac = 0.5)
 nsub <- length(unique(des$subject))
 k_expected <- max(2L, floor(0.5 * nsub))
 report("stability_selection subsample size",

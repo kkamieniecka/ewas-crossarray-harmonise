@@ -40,9 +40,23 @@ test_that("stability selection returns frequencies in [0, 1]", {
   expect_lt(ss$freq[["sometimes"]], 1)
 })
 
-test_that("stability selection is reproducible for a given seed", {
+test_that("stability selection is reproducible from the caller's seed", {
   subjects <- sprintf("S%02d", 1:12)
   fit_fn <- function(sub) sub[1]
-  expect_identical(stability_selection(fit_fn, subjects, 20L, seed = 3L)$freq,
-                   stability_selection(fit_fn, subjects, 20L, seed = 3L)$freq)
+  set.seed(3L)
+  a <- stability_selection(fit_fn, subjects, 20L)$freq
+  set.seed(3L)
+  b <- stability_selection(fit_fn, subjects, 20L)$freq
+  expect_identical(a, b)
+})
+
+test_that("stability selection leaves the caller's stream where it found it", {
+  subjects <- sprintf("S%02d", 1:12)
+  fit_fn <- function(sub) sub[1]
+  set.seed(11L)
+  before <- runif(1)
+  set.seed(11L)
+  invisible(stability_selection(fit_fn, subjects, 5L))
+  set.seed(11L)
+  expect_identical(runif(1), before)
 })
