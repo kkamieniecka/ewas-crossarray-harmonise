@@ -105,9 +105,12 @@ cannot be completed without them:
 
 ## Wanted before review, not by precheck
 
-- **Class entry points.** Nothing accepts a `SummarizedExperiment` or
-  `GenomicRatioSet`, and `call_regions()`/`call_blocks()` return data frames
-  rather than `GRanges`. Reviewers ask for this specifically.
+- **Class entry points — done.** `fit_within_se()` takes a
+  `SummarizedExperiment`/`GenomicRatioSet`, `as_granges()` turns a region or
+  block table into a `GRanges`, and `probe_coords()`/`sort_probes()` read and
+  apply genomic order. They are plain functions behind `requireNamespace()`
+  guards rather than S4 methods, because those packages are `Suggests`; the
+  vignette has a section on them.
 - **The `set.seed()` warning** in `stability_selection()`. A package function
   must not reset the caller's stream. Changing it changes the signature, so the
   two stage drivers, the identity test and the cross-language equivalence test
