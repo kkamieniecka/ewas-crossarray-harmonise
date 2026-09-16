@@ -90,9 +90,11 @@ cannot be completed without them:
 - A subscription to the bioc-devel mailing list. The check reports "cannot
   determine" for everyone — it needs list-admin credentials — so it is not
   evidence either way.
-- The `fnd` role in `Authors@R` if the work is grant-supported. The ORCIDs
-  are in (Kamieniecka 0009-0004-2454-5950, Poterlowicz 0000-0001-6173-5674);
-  `tools/build_pkg.py` writes that block, so a further author goes there.
+- Nothing. `Authors@R` is complete: three authors with emails and ORCIDs
+  (Kamieniecka 0009-0004-2454-5950 as maintainer, McLean 0000-0001-9328-8928,
+  Poterlowicz 0000-0001-6173-5674), and no `fnd` role because the work is PhD
+  research rather than grant-supported. `tools/build_pkg.py` writes that
+  block, so any later change goes there.
 - A disclosure of AI-assisted code. Bioconductor's own guide (pkgrevdocs,
   `ai-policy-third-party.Rmd`) requires that non-trivially AI-generated or
   copied code be raised in the submission issue with provenance, cited in the

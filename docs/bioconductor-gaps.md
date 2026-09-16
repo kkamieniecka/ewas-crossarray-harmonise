@@ -55,12 +55,12 @@ Four findings that stood here before are closed:
   false positive on `cand[st:min(...)]`, which the linter read as `st::min`.
   `bin/ewasml.R` now writes it as `seq.int(st, min(...))`, which is identical
   for `chunk >= 1L`. Pure R syntax, so `bin/ewasml.py` needed no mirror.
-- **No ORCID in `Authors@R`.** `DESCRIPTION` now carries
-  `person("Katarzyna", "Kamieniecka", role = c("aut", "cre"), comment =
-  c(ORCID = "0009-0004-2454-5950"))` and
-  `person("Krzysztof", "Poterlowicz", role = "aut", comment = c(ORCID =
-  "0000-0001-6173-5674"))`. Both also appear in `CITATION.cff` and on the
-  vignette. `Authors@R` is written by `tools/build_pkg.py`, so a further
+- **No ORCID in `Authors@R`.** `DESCRIPTION` now carries all three authors
+  with ORCIDs and Bradford addresses — Kamieniecka (`aut`, `cre`,
+  0009-0004-2454-5950), McLean (`aut`, 0000-0001-9328-8928) and Poterlowicz
+  (`aut`, 0000-0001-6173-5674) — in the manuscript's author order. The same
+  three appear in `CITATION.cff` with the Bradford affiliation, and on the
+  vignette title page. `Authors@R` is written by `tools/build_pkg.py`, so a further
   author or the `fnd` role goes there, not into the generated `DESCRIPTION`.
 - **No class entry points.** `R/classes.R` now takes a `SummarizedExperiment`
   (or anything extending it, including minfi's `GenomicRatioSet`) into
@@ -89,9 +89,9 @@ global stream, at the cost of a dependency.
 
 ## The notes worth acting on
 
-- **Funding**: add the `fnd` role if the work is grant-supported — owner-only,
-  it goes into the `Authors@R` block in `tools/build_pkg.py`, which is also
-  where a further author would be added.
+- **Funding**: no `fnd` role. The work is PhD research and is not
+  grant-supported, so there is no funder to name. BiocCheck does not require
+  one; the role exists only for grant-supported work.
 - **Row names out of `demean_by_group()`**: not a BiocCheck finding, but the
   package's new `linalg` tests turned it up. When the input has no row names,
   the result carries the integer group codes as row names, leaked from the

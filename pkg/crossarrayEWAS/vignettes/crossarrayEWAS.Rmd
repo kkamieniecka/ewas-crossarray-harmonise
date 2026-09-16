@@ -1,6 +1,6 @@
 ---
 title: "Design-aware region and block detection for cross-array longitudinal EWAS"
-author: "Katarzyna Kamieniecka, Krzysztof Poterlowicz"
+author: "Katarzyna Kamieniecka, Samantha McLean, Krzysztof Poterlowicz"
 date: "`r Sys.Date()`"
 package: crossarrayEWAS
 output:

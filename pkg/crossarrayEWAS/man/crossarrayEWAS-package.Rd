@@ -37,7 +37,8 @@ Useful links:
 Authors:
 \itemize{
   \item Katarzyna Kamieniecka \email{kkamieni@bradford.ac.uk} (\href{https://orcid.org/0009-0004-2454-5950}{ORCID})
-  \item Krzysztof Poterlowicz (\href{https://orcid.org/0000-0001-6173-5674}{ORCID})
+  \item Samantha McLean \email{S.L.Mclean@bradford.ac.uk} (\href{https://orcid.org/0000-0001-9328-8928}{ORCID})
+  \item Krzysztof Poterlowicz \email{K.Poterlowicz1@bradford.ac.uk} (\href{https://orcid.org/0000-0001-6173-5674}{ORCID})
 }
 
 }

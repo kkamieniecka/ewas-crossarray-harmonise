@@ -8,10 +8,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 - Author metadata: `DESCRIPTION`, `CITATION.cff` and the vignette now name
-  Katarzyna Kamieniecka (ORCID 0009-0004-2454-5950, `aut`/`cre`) and
-  Krzysztof Poterlowicz (ORCID 0000-0001-6173-5674, `aut`), with the Bradford
-  affiliation in `CITATION.cff`. This closes the BiocCheck ORCID note, taking
-  it to 5 notes. `Authors@R` is written by `tools/build_pkg.py`.
+  all three authors in the manuscript's order, each with a Bradford address
+  and an ORCID — Katarzyna Kamieniecka (0009-0004-2454-5950, `aut`/`cre`),
+  Samantha McLean (0000-0001-9328-8928, `aut`) and Krzysztof Poterlowicz
+  (0000-0001-6173-5674, `aut`) — with the Bradford affiliation in
+  `CITATION.cff`. No `fnd` role: the work is PhD research, not
+  grant-supported. This closes the BiocCheck ORCID note, taking it to 5
+  notes. `Authors@R` is written by `tools/build_pkg.py`.
 - `pkg/R-src/classes.R`: class entry points, the piece Bioconductor reviewers
   ask for by name. `fit_within_se()` fits from a `SummarizedExperiment` (or a
   `GenomicRatioSet`, which extends one), resolving exposure, subject and

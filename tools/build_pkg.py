@@ -400,7 +400,11 @@ Authors@R: c(
     person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
            email = "kkamieni@bradford.ac.uk",
            comment = c(ORCID = "0009-0004-2454-5950")),
+    person("Samantha", "McLean", role = "aut",
+           email = "S.L.Mclean@bradford.ac.uk",
+           comment = c(ORCID = "0000-0001-9328-8928")),
     person("Krzysztof", "Poterlowicz", role = "aut",
+           email = "K.Poterlowicz1@bradford.ac.uk",
            comment = c(ORCID = "0000-0001-6173-5674")))
 Description: Estimation and region-calling routines for epigenome-wide
     association studies that combine Illumina HumanMethylation450 and
