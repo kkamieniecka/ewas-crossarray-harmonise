@@ -7,9 +7,10 @@ requirement: non-trivially AI-generated or copied code is raised in the issue
 with its provenance, cited where it sits, redistributable under the package
 licence, and owned by the submitter.
 
-Everything in square brackets needs a decision before posting. The numbers are
-measured as of pipeline commit `e7766d3` and should be re-read from
-`docs/bioconductor-gaps.md` if the package moves before the issue is opened.
+Post it in your own words; nothing in it is left as a placeholder. The
+numbers are those recorded in `docs/bioconductor-gaps.md` for version 0.99.0
+and should be re-read from there if the package moves before the issue is
+opened.
 
 ---
 
@@ -28,18 +29,49 @@ That source file, its Python twin `bin/ewasml.py`, the generator
 sessions in September 2026, working from method descriptions and design
 decisions I gave. I reviewed and edited the result function by function. The
 commits from those sessions are attributed as such in the pipeline repository's
-history rather than presented as mine [AUTHOR: confirm you are happy to point
-reviewers at that history; commits before `ee0d848` carry the assistant's
-authorship, later ones carry mine].
+history rather than presented as mine: commits up to `ee0d848` are authored
+to the assistant, and commits after it are authored to me, so the split is
+visible in `git log` and I am happy for reviewers to read it.
 
 **Provenance.** No code was copied from another package or repository. The
 methods are implemented from their published descriptions, not adapted from
 existing implementations: subject-level stability selection after Meinshausen
 and Bühlmann; total-variation denoising with a distance-dependent penalty;
-a hidden semi-Markov model for block state; and region and block conventions
-that follow `bumphunter` and `minfi::blockFinder` in intent while being
-independently written [AUTHOR: add the citations you want named here — they
-should match the manuscript's reference list].
+a hidden Markov model with duration-aware transitions for block state; and
+region and block conventions that follow `bumphunter` and `minfi::blockFinder`
+in intent while being independently written. The descriptions worked from are:
+
+- Meinshausen N, Bühlmann P. Stability selection. *J R Stat Soc Series B*.
+  2010;72:417–73. doi:10.1111/j.1467-9868.2010.00740.x
+- Tibshirani R, Saunders M, Rosset S, Zhu J, Knight K. Sparsity and smoothness
+  via the fused lasso. *J R Stat Soc Series B*. 2005;67:91–108.
+  doi:10.1111/j.1467-9868.2005.00490.x
+- Boyd S, Parikh N, Chu E, Peleato B, Eckstein J. Distributed optimization and
+  statistical learning via the alternating direction method of multipliers.
+  *Found Trends Mach Learn*. 2011. doi:10.1561/9781601984616
+- Rabiner LR. A tutorial on hidden Markov models and selected applications in
+  speech recognition. *Proc IEEE*. 1989;77:257–86. doi:10.1109/5.18626
+- Jaffe AE, Murakami P, Lee H, Leek JT, Fallin MD, Feinberg AP, et al. Bump
+  hunting to identify differentially methylated regions in epigenetic
+  epidemiology studies. *Int J Epidemiol*. 2012;41:200–9.
+  doi:10.1093/ije/dyr238
+- Hansen KD, Timp W, Bravo HC, Sabunciyan S, Langmead B, McDonald OG, et al.
+  Increased methylation variation in epigenetic domains across cancer types.
+  *Nat Genet*. 2011;43:768–75. doi:10.1038/ng.865
+- Aryee MJ, Jaffe AE, Corrada-Bravo H, Ladd-Acosta C, Feinberg AP, Hansen KD,
+  et al. Minfi: a flexible and comprehensive Bioconductor package for the
+  analysis of Infinium DNA methylation microarrays. *Bioinformatics*.
+  2014;30:1363–9. doi:10.1093/bioinformatics/btu049
+
+The one routine not implemented from a description is the variance moderation,
+which calls `limma::squeezeVar()` directly (Smyth GK. Linear models and
+empirical Bayes methods for assessing differential expression in microarray
+experiments. *Stat Appl Genet Mol Biol*. 2004;3:1–25. doi:10.2202/1544-6115.1027);
+the package's alternative method-of-moments path is an independent
+implementation used only to compare the R and Python cores arithmetically.
+
+These are the same references the accompanying manuscript cites for these
+methods.
 
 **Licence.** All of it is original to this project and released under the
 package's MIT licence. Nothing with incompatible terms is vendored.
@@ -62,4 +94,4 @@ from the tool that drafted it:
   is the subject of a manuscript in preparation and the outputs are in the
   pipeline repository under `results/GSE237561/`.
 
-[AUTHOR: sign — name, and "maintainer" or your preferred wording.]
+— Katarzyna Kamieniecka, maintainer, `crossarrayEWAS`

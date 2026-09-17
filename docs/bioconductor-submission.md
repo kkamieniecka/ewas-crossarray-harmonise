@@ -152,6 +152,9 @@ tests pass unchanged.
 
 ## Then the issue
 
+The exact text to paste, in order, is in `docs/bioconductor-issue.md`; the
+sequence is:
+
 1. Open an issue on `Bioconductor/BiocContributions` using
    `new_submission_template`, unmodified, titled with the package name; the
    body is just the repository URL.
