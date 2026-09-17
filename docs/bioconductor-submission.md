@@ -75,14 +75,18 @@ re-knits it in 11 s.
 It is edited in `pkg/vignettes-src/`, never in `pkg/crossarrayEWAS/vignettes/`
 — the generated copy is overwritten on every regeneration.
 
-Six paragraphs are marked `[AUTHOR: ...]` and are yours to write, because they
-are claims about the study and about your own practice rather than about the
-code: the cohort the design was built for; when `var_method = "mom"` is the
-right choice; the effect size you consider reportable, which is what
-`min_effect` encodes; the selection-frequency threshold you report on; how you
-read a block against a region when the two disagree; and the citation
-paragraph for the pipeline and the Galaxy suite. A reviewer reads these first,
-and none of them should be written by anything that has not run the cohort.
+**The six author paragraphs are written.** They were the claims about the
+study rather than about the code, and they now read as decisions: GSE237561 is
+named as the validation cohort with its 126 arrays from 38 subjects across the
+two generations, with cohort nested inside array generation so a cohort-level
+batch correction is not identifiable there; `var_method` is reported at the
+`"limma"` default that the published run used, with `"mom"` reserved for
+reproducing the Python path or a deployment without the Bioconductor stack;
+`min_effect` stays at 0.05 M per 100 days with the beta-scale conversions that
+justify the floor; selection frequency is reported at 0.6 as an annotation
+beside z rather than as a filter; and regions and blocks are reported as
+independent lines of evidence, neither filtering the other. No `[AUTHOR: ]`
+placeholder remains in the vignette.
 
 ## Blocking: things no build can supply
 
@@ -109,6 +113,11 @@ cannot be completed without them:
   responsible for the result. Much of `bin/ewasml.R` came from assisted
   sessions, so this applies directly. The issue template itself asks only for
   the repository URL; the disclosure goes in as a comment.
+  `docs/ai-disclosure-comment.md` is the drafted comment, with the provenance,
+  the licence position and the maintainer-responsibility statement; it needs
+  the maintainer's own sign-off line before it is posted, and it should be
+  read once against the current `ai-policy-third-party.Rmd` in case the policy
+  moved.
 
 ## Wanted before review, not by precheck
 
@@ -121,8 +130,12 @@ cannot be completed without them:
 - **The `set.seed()` warning — done.** `stability_selection()` has no `seed`
   argument; `bin/04_dmr_ml.R` seeds immediately before the call and stage-04
   output is unchanged. BiocCheck is at 0 warnings.
-- **A check under R 4.6.** Everything here has been checked under 4.5.3;
-  three of the four report platforms run 4.6.0.
+- **A check under R 4.6 — done.** The package repository's workflow run on
+  `c2cad19` came back green on all eleven jobs: the Bioconductor Checks job,
+  R-devel and R-release on Linux and Windows, R-release and R-oldrel on macOS
+  and Windows, the Wasm build, and source-plus-vignettes. That is the
+  four-platform report the submission build produces, obtained before the
+  issue is open. Local checking is under 4.5.3;
   `pkg/pkg-repo-template/.github/workflows/r-universe.yml` is the
   [R-universe workflow](https://docs.r-universe.dev/bioconductor/#debugging-the-ci)
   that mimics the submission build — `universe: bioc` with

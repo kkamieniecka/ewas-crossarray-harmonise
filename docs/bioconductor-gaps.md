@@ -33,15 +33,16 @@ suppressed: `R CMD build` takes about 11 s with it and the tarball is 429 KB,
 an order of magnitude larger than the code-only 31 KB and still far inside the
 5 MB limit.
 
-## The one remaining BiocCheck error
+## The error — closed
 
-**"Unable to find your email in the Support Site: HTTP 404 Not Found."** With
-the sandbox allowed to reach support.bioconductor.org, this is now a real
-answer rather than a connection failure: `kkamieni@bradford.ac.uk` is not
-registered there. Registration under exactly the `DESCRIPTION` address, and
-subscription to the bioc-devel mailing list, are account tasks that no build
-can do — and the mailing-list check reports "cannot determine" for everyone,
-because it needs list-admin credentials, so it is not evidence either way.
+**"Unable to find your email in the Support Site."** Closed by registering
+`kkamieni@bradford.ac.uk` at support.bioconductor.org under exactly the
+`DESCRIPTION` address, with `crossarrayEWAS` in that profile's Watched Tags.
+BiocCheck now reports `Checking for support site registration... OK`, which is
+what took the checker to 0 errors. The bioc-devel mailing-list check still
+reports "cannot determine" — it needs list-admin credentials and says the same
+for everyone — so it is not evidence either way, and subscribing remains a
+maintainer task that no build can verify.
 
 Four findings that stood here before are closed:
 
@@ -49,8 +50,8 @@ Four findings that stood here before are closed:
   written, copied into the generated tree by `tools/build_pkg.py`, and built
   by `R CMD build`. It simulates a two-array longitudinal cohort rather than
   shipping data, and its planted signals are recovered by the estimators it
-  demonstrates — see `docs/bioconductor-submission.md` for the author
-  paragraphs still marked in it.
+  demonstrates. The six author paragraphs it carried are written; nothing in
+  it is marked as a placeholder.
 - **"Use double colon for qualified imports" at `R/clusters.R`.** This was a
   false positive on `cand[st:min(...)]`, which the linter read as `st::min`.
   `bin/ewasml.R` now writes it as `seq.int(st, min(...))`, which is identical
