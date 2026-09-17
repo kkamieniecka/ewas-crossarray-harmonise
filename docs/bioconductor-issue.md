@@ -75,5 +75,8 @@ script, which takes it as the second argument:
 
     tools/sync-to-pkg-repo.sh /path/to/crossarrayEWAS <staging-remote>
 
-Bump `Version` in `tools/build_pkg.py` — not in the generated `DESCRIPTION` —
-so the next regeneration carries it.
+Bump the version in `tools/build_pkg.py` — not in the generated
+`DESCRIPTION` — so the next regeneration carries it. Two strings there hold
+it: the `Version:` field of the DESCRIPTION template and the heading of the
+`NEWS` block. Change both, regenerate, and check `tests/test_pkg_identity.R`
+still passes before pushing.
