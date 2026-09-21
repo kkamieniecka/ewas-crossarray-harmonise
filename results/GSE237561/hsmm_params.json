@@ -1,57 +1,41 @@
 {
- "mu": [
-  0.0,
-  0.009787451517804175,
-  0.01359951837082628
- ],
- "sigma": [
-  0.004134905278103188,
-  0.0001,
-  0.011815426392859048
- ],
- "pi": [
-  0.12353232770206203,
-  0.6208075649274961,
-  0.2556601073704419
- ],
- "length_scale": 250000.0,
- "loglik": 38380.50127353176,
+ "mu": [0, 0.00978745151780416, 0.0135995183708262],
+ "sigma": [0.00413490527810263, 0.0001, 0.0118154263928587],
+ "pi": [0.123532327702062, 0.620807564927489, 0.255660107370449],
+ "length_scale": 250000,
+ "loglik": 38380.5012735318,
  "n_iter": 21,
+ "neutral_state": 0,
+ "state_labels": ["neutral", "hyper_s1", "hyper_s2"],
  "n_clusters": 16173,
  "n_openSea_probes": 152721,
- "n_blocks": 8,
- "cross_array_r": -0.11767229528569093,
- "cross_array_sign_concordance": 0.625,
- "legacy_fixed_collapse": {
-  "n_units": 21598,
-  "median_width_bp": 237.0,
-  "median_probes": 3.0
- },
- "covars_used": [
-  "smoking_score",
-  "cd8t",
-  "cd4t",
-  "bcell",
-  "gran",
-  "mono",
-  "nk"
- ],
+ "n_blocks": 38,
+ "cross_array_r": -0.414411113186236,
+ "cross_array_sign_concordance": 0.631578947368421,
+ "legacy_fixed_collapse": null,
+ "covars_used": ["smoking_score", "cd8t", "cd4t", "bcell", "gran", "mono", "nk"],
+ "var_method": "limma",
+ "implementation": "R",
+ "core_source": "bin/ewasml.R",
  "args": {
   "in_dir": "results/harmonised",
   "probe_map": "results/crossarray_probe_map.csv.gz",
   "out_dir": "results/blocks",
   "exposure": "days_on_clozapine",
-  "exposure_scale": 100.0,
+  "exposure_scale": 100,
   "subject": "Subject_ID",
   "array_col": "Array_Type",
   "covars": "smoking_score,cd8t,cd4t,bcell,gran,mono,nk",
   "max_gap": 1500,
   "rho_min": 0.2,
-  "length_scale": 250000.0,
+  "length_scale": 250000,
   "min_post": 0.8,
   "min_clusters": 3,
-  "fixed_collapse": true,
-  "seed": 1
+  "min_fit_clusters": 200,
+  "fixed_collapse": false,
+  "var_method": "limma",
+  "seed": 1,
+  "help": false
  },
- "runtime_s": 4.4
+ "runtime_s": 6.8
 }

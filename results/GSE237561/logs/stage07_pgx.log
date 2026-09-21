@@ -1,0 +1,6 @@
+[06:38:18] reading rs probes from 126 samples on 2 array types
+[06:39:30] rs probes: 450K=65, EPIC=59; shared by both arrays: 59
+[06:39:30] identity concordance: within-subject median 1.000, between-subject median 0.373
+[06:39:41] probes annotated to (^|;)CYP: 668
+[06:39:45] gapped (genotype-like) probes among them: 5
+[06:39:45] done

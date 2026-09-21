@@ -161,9 +161,57 @@ confidence in the state assignment at the `--min-post 0.8` threshold, not a
 test against a null: the block stage defines no family-wise error, so §8's
 "nothing is discovered" is unchanged by this re-labelling.
 
-`results/GSE237561/blocks_hsmm.csv` and `openSea_cluster_effects.csv.gz` are
-still the pre-fix files; the re-run outputs live outside the repository
-because raw data are not committed.
+### 6b. Re-run from raw IDATs, September 2026
+
+`results/GSE237561/blocks_hsmm.csv` and `hsmm_params.json` are now the
+post-fix files, and `openSea_cluster_effects.csv.gz` alongside them is the
+post-fix cluster table, kept out of version control by `.gitignore` like the
+other bulk intermediates. They come from a
+re-run that started from the deposited IDATs and rebuilt every input from
+scratch, because the original working tree kept none of them: the raw arrays,
+the harmonised matrix and the cross-array probe map had all been swept, and
+the R library had to be rebuilt as well.
+
+What was reconstructed, and how:
+
+- **Raw data.** All 252 IDATs (126 samples) were fetched per sample from the
+  GEO supplementary files with `tools/fetch_idats.py`. One file arrived
+  truncated and was refetched after a `gzip -t` pass over the set; minfi's
+  failure on a truncated IDAT is an obscure `argument is of length zero`
+  inside the reader, so the integrity check is worth keeping in the loop.
+- **R stack.** `tools/install_bioc.R` pins Bioconductor 3.20 on R 4.4 and
+  reproduces the versions in the original install log: minfi 1.52.1,
+  bumphunter 1.48.0, limma 3.62.2, the two manifests (0.4.0, 0.3.0) and the
+  two annotations (0.6.1, 0.6.0).
+- **Probe map.** `--probe-map` is an external input that no stage in this
+  repository produced. It was missing from the working tree, and
+  `tools/build_probe_map.R` was written to rebuild it from the manifest and
+  annotation packages: shared / array-only status from the two manifests,
+  which is the same source stage 01 uses to decide what is shared, and island
+  context from the annotations. The original file was afterwards recovered
+  intact from the session artifact store; its shared-probe count, 454,181,
+  is the one `manifest_concordance.csv` records, whereas the rebuild returns
+  453,093 for the same category. The two are not interchangeable at that level
+  of detail, and the original is the file to use. Neither choice moves the
+  block results: stage 05 takes only island context from the map and selects
+  the same 152,721 open-sea probes either way.
+
+The reconstruction lands on the same inputs as the original run rather than
+merely similar ones. Stage 01 returns 452,567 probes in the combined virtual
+450K space and 422,898 after filtering, and stage 05 selects the same 152,721
+open-sea shared autosomal probes and builds the same 16,173 clusters. The fit
+is identical to four decimal places (21 iterations, log-likelihood 38,380.5013,
+stationary probabilities 0.124 / 0.621 / 0.256) and the segmentation is the
+§6a one: 38 blocks, all hyper, median width 133,601 bp over a median of 9
+clusters.
+
+The stage's own cross-array numbers for those 38 blocks are *r* = -0.414 with
+63.2% sign concordance. These are computed from the per-array effects the
+block stage estimates for itself, and they are not the shared-estimator
+figures in the §6 and §6a tables: those re-estimate every method's per-array
+effect from the stage 02 within-subject probe fits, which this re-run did not
+regenerate. The two are different quantities and should not be read against
+each other.
 
 Two operational findings on the legacy implementation:
 
@@ -222,6 +270,11 @@ nextflow run . -profile conda \
   --probe_map results/crossarray_probe_map.csv.gz \
   --exposure days_on_clozapine --subject Subject_ID
 ```
+
+If the inputs are missing, rebuild them first: `tools/fetch_idats.py` for the
+IDATs, `tools/install_bioc.R --lib .r-libs/ewas` for the R stack, and
+`tools/build_probe_map.R --out results/crossarray_probe_map.csv.gz` for the
+probe map.
 
 Stage runtimes on 8 CPUs: harmonisation ~25 min, probe model ~24 min, legacy
 baseline ~6 min, region replacement ~2.6 h (dominated by 2 × 200

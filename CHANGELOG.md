@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## Stage 07 — pharmacogenomic genotyping from array probes
+
+- `bin/07_pgx_genotypes.R`: calls the Infinium rs identity probes and screens
+  CYP-annotated probes for SNP-driven (gapped) beta distributions with
+  `gaphunter`, cross-checked against the manifest's documented `Probe_rs` /
+  `SBE_rs` / `CpG_rs` variants. The header states the limit the stage cannot
+  pass: no CYP star allele and no CYP2D6 structural variation is on either
+  array, so no diplotype or metaboliser phenotype is derivable from these data.
+- GSE237561 results in `docs/pgx-GSE237561.md`: within-subject rs-probe
+  concordance median 1.000 against a between-subject median of 0.373, no sample
+  swaps; no subject is present on both arrays, so no within-subject pair crosses
+  the array boundary. Of 668 CYP probes, 5 are gapped, all with two clusters and
+  only one with a documented variant that does not account for its split; the
+  clinically actionable pharmacogenes carry none.
+- `tools/fetch_idats.py` rewritten to pull per-sample supplementary files using
+  the URLs already in the sample sheet and to verify each as a complete gzip
+  stream, because a truncated IDAT only surfaces much later as an obscure
+  reader error.
+- `docs/results-GSE237561.md`: the probe-map note corrected — the original file
+  was recovered rather than lost, its shared-probe count is the one the
+  concordance table records, and it supersedes the rebuild.
+
 ## [Unreleased]
 
 ### Changed

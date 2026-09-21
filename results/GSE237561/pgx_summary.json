@@ -1,0 +1,36 @@
+{
+  "n_samples": 126,
+  "rs_probes_shared": 59,
+  "rs_probes_per_array": {
+    "450K": 65,
+    "EPIC": 59
+  },
+  "identity": {
+    "within_subject_median": 1,
+    "within_subject_min": 0.949153,
+    "between_subject_median": 0.372881,
+    "between_subject_max": 0.610169,
+    "cross_array_within_subject_median": null,
+    "n_pairs_same_subject": 158,
+    "n_pairs_cross_array_same_subject": 0
+  },
+  "gene_pattern": "(^|;)CYP",
+  "probes_in_genes": 668,
+  "gapped_probes": 5,
+  "gapped_with_documented_snp": 1,
+  "genes_with_gapped_probes": ["CYP27C1", "CYP2F1", "CYP4F12", "CYP4F8"],
+  "star_alleles_callable": false,
+  "args": {
+    "in_dir": "results/harmonised",
+    "sheet": "data/sample_sheets/sample_sheet_GSE237561.csv",
+    "idat_dir": "data/idat",
+    "out_dir": "results/pgx",
+    "genes": "(^|;)CYP",
+    "subject": "Subject_ID",
+    "array_col": "Array_Type",
+    "het_lo": 0.25,
+    "het_hi": 0.75,
+    "gap_threshold": 0.15,
+    "gap_outcutoff": 0.01
+  }
+}

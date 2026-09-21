@@ -1,0 +1,6 @@
+"probe","chr","pos","gene","island","n_groups","Probe_rs","Probe_maf","CpG_rs","CpG_maf","SBE_rs","SBE_maf","documented_snp"
+"cg08561071","chr19",41627236,"CYP2F1","N_Shelf",2,"rs113512828",0.016453,NA,NA,NA,NA,TRUE
+"cg07512206","chr19",15725989,"CYP4F8","OpenSea",2,NA,NA,NA,NA,NA,NA,FALSE
+"cg14711976","chr19",15783239,"CYP4F12","OpenSea",2,NA,NA,NA,NA,NA,NA,FALSE
+"cg09199330","chr2",127963503,"CYP27C1","OpenSea",2,NA,NA,NA,NA,NA,NA,FALSE
+"cg10985347","chr2",127963512,"CYP27C1","OpenSea",2,NA,NA,NA,NA,NA,NA,FALSE
