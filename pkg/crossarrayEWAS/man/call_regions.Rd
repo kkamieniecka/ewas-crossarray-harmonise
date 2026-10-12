@@ -25,21 +25,21 @@ call_regions(
 
 \item{se}{standard error per probe.}
 
-\item{theta}{denoised track from ``tv_denoise()``.}
+\item{theta}{denoised track from \code{tv_denoise()}.}
 
 \item{min_probes}{minimum probes per reported region.}
 
 \item{min_effect}{minimum absolute weighted mean effect.}
 
-\item{tol}{tolerance for treating two ``theta`` values as equal.}
+\item{tol}{tolerance for treating two \code{theta} values as equal.}
 
 \item{cluster}{optional cluster id per probe; a change of id forces a
 boundary.}
 }
 \value{
-list with ``table`` (one row per region: ``chr``, ``start``,
-  ``end``, effect, standard error, z, probe count and 0-based probe index
-  range) and ``max_abs_z``.
+list with \code{table} (one row per region: \code{chr}, \code{start},
+\code{end}, effect, standard error, z, probe count and 0-based probe index
+range) and \code{max_abs_z}.
 }
 \description{
 Region boundaries are the jumps of the piecewise-constant solution (or a

@@ -17,7 +17,7 @@ selected region keys.}
 \item{frac}{fraction of subjects per subsample.}
 }
 \value{
-list with ``freq`` (named selection frequencies) and ``n_boot``.
+list with \code{freq} (named selection frequencies) and \code{n_boot}.
 }
 \description{
 Meinshausen-Buhlmann stability selection resampling SUBJECTS, not samples:
@@ -41,7 +41,7 @@ Draws come from the caller's RNG stream: call set.seed() before this
 function to make a run reproducible. It takes no seed argument because a
 library function must not reset the stream its caller is using -- doing so
 silently changes every later draw in the session, and BiocCheck flags it.
-The Python twin keeps its `seed` argument: numpy's default_rng() builds a
+The Python twin keeps its \code{seed} argument: numpy's default_rng() builds a
 generator local to the call and never touches global state, so the hazard
 this avoids does not exist there.
 }

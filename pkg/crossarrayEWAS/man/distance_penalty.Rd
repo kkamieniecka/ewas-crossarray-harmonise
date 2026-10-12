@@ -13,17 +13,17 @@ distance_penalty(pos, lam0, decay_bp = 1000, w = NULL, lam_floor = 0)
 
 \item{decay_bp}{distance (bp) over which the penalty decays by 1/e.}
 
-\item{w}{optional precision weights, used only to set ``scale``.}
+\item{w}{optional precision weights, used only to set \code{scale}.}
 
 \item{lam_floor}{lower bound on the returned penalty.}
 }
 \value{
-numeric vector of penalties, one per gap (``length(pos) - 1``).
+numeric vector of penalties, one per gap (\code{length(pos) - 1}).
 }
 \description{
-Builds the per-gap penalty ``lam0 * scale * exp(-d / decay_bp)``. When
-precision weights are supplied ``scale`` is their median, which makes
-``lam0`` dimensionless and the same grid usable on M-values, beta values or
+Builds the per-gap penalty \code{lam0 * scale * exp(-d / decay_bp)}. When
+precision weights are supplied \code{scale} is their median, which makes
+\code{lam0} dimensionless and the same grid usable on M-values, beta values or
 another cohort.
 }
 \details{
@@ -31,7 +31,7 @@ Notes carried over from the pipeline source:
 
 lam_i = lam0 * scale * exp(-d_i / decay_bp) over successive distances.
 
-`scale` is median(w) when precision weights are supplied, which makes lam0
+\code{scale} is median(w) when precision weights are supplied, which makes lam0
 DIMENSIONLESS: lam0 ~ 1 means "one probe's worth of precision resists one
 unit of jump", so the same grid is usable on M-values, beta values or a
 different cohort. Without it lam0 must be retuned whenever the noise level

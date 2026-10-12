@@ -21,35 +21,35 @@ call_blocks(
 
 \item{end}{cluster end position.}
 
-\item{post}{clusters x 3 posterior matrix from ``fit_block_hsmm()``.}
+\item{post}{clusters x 3 posterior matrix from \code{fit_block_hsmm()}.}
 
 \item{min_post}{minimum posterior for a cluster to join a block.}
 
 \item{min_clusters}{minimum clusters per reported block.}
 
-\item{neutral}{1-based neutral column, ``fit_block_hsmm()$neutral``.}
+\item{neutral}{1-based neutral column, \code{fit_block_hsmm()$neutral}.}
 }
 \value{
-data frame with ``chr``, ``start``, ``end``, ``width`` (inclusive,
-  ``end - start + 1``), ``n_clusters``, ``direction`` and ``posterior``;
-  zero rows if nothing passes.
+data frame with \code{chr}, \code{start}, \code{end}, \code{width} (inclusive,
+\code{end - start + 1}), \code{n_clusters}, \code{direction} and \code{posterior};
+zero rows if nothing passes.
 }
 \description{
 Merges runs of clusters whose posterior for a non-neutral state exceeds
-``min_post``, so each block carries a calibrated confidence rather than a
-binary permutation call. Pass ``neutral`` from the fit: assuming the middle
+\code{min_post}, so each block carries a calibrated confidence rather than a
+binary permutation call. Pass \code{neutral} from the fit: assuming the middle
 column is neutral mislabels every block when all cluster effects fall on one
 side of zero.
 }
 \details{
 Notes carried over from the pipeline source:
 
-Maximal runs whose posterior for a non-neutral state exceeds `min_post`.
+Maximal runs whose posterior for a non-neutral state exceeds \code{min_post}.
 
 The reported block posterior is the mean over the block's clusters, so a
 block carries a calibrated confidence rather than a binary permutation call.
 
-`neutral` is the column of `post` holding the state pinned at mu = 0, i.e.
+\code{neutral} is the column of \code{post} holding the state pinned at mu = 0, i.e.
 fit_block_hsmm()$neutral -- pass it. Columns are ordered by mu, so a state
 left of that column is hypomethylated relative to no change and one to the
 right is hypermethylated. Assuming the middle column is neutral mislabels

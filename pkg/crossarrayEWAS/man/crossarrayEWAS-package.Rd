@@ -26,8 +26,8 @@ function under \sQuote{Notes carried over from the pipeline source}.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/kkamieniecka/ewas-crossarray-harmonise}
-  \item Report bugs at \url{https://github.com/kkamieniecka/ewas-crossarray-harmonise/issues}
+  \item \url{https://github.com/bioinfbrad/crossarrayEWAS}
+  \item Report bugs at \url{https://github.com/bioinfbrad/crossarrayEWAS/issues}
 }
 
 }

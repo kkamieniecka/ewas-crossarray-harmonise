@@ -7,15 +7,15 @@
 read_f64(stem)
 }
 \arguments{
-\item{stem}{path prefix without extension; ``<stem>.f64`` holds the doubles
-and ``<stem>_dims.json`` the dimensions and dimnames.}
+\item{stem}{path prefix without extension; \verb{<stem>.f64} holds the doubles
+and \verb{<stem>_dims.json} the dimensions and dimnames.}
 }
 \value{
-list with ``mat`` (numeric matrix, probes x samples), ``rownames``
-  and ``colnames`` (character or ``NULL``).
+list with \code{mat} (numeric matrix, probes x samples), \code{rownames}
+and \code{colnames} (character or \code{NULL}).
 }
 \description{
-Reads the ``<stem>.f64`` / ``<stem>_dims.json`` pair that the Nextflow
+Reads the \verb{<stem>.f64} / \verb{<stem>_dims.json} pair that the Nextflow
 stages use to pass probe-level matrices between processes. This is a
 transport format, not an analysis format: it exists because a column-major
 double dump plus a JSON header round-trips between R and Python without

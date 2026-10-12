@@ -28,7 +28,7 @@ comethylation_clusters(
 }
 \value{
 integer vector of cluster ids, one per input probe, in input order;
-  probes in no multi-probe cluster are returned as -1.
+probes in no multi-probe cluster are returned as -1.
 }
 \description{
 Clusters genomically adjacent probes whose within-subject residuals
@@ -40,7 +40,7 @@ Notes carried over from the pipeline source:
 
 Cluster probes that are both physically close and empirically co-methylated.
 
-Returns an integer cluster id per probe (-1 = singleton). `resid` is the
+Returns an integer cluster id per probe (-1 = singleton). \code{resid} is the
 within-subject residual matrix, so the correlation is between-visit
 co-variation -- not between-subject or between-array variation, which is
 what a region is supposed to mean.
@@ -58,7 +58,10 @@ subject <- rep(sprintf("S\%02d", seq_len(n_sub)), each = 2)
 exposure <- rep(c(0, 1), times = n_sub)
 M <- matrix(rnorm(n_probes * length(subject)), nrow = n_probes)
 M[1:3, exposure == 1] <- M[1:3, exposure == 1] + 1.2
-resid <- demean_rows_by_group(M, subject)
+# residuals of a model carrying subject and exposure, which is what
+# ewas_regions() builds internally
+design <- stats::model.matrix(~ subject + exposure)
+resid <- t(stats::lm.fit(design, t(M))$residuals)
 chrom <- rep("chr1", n_probes)
 pos <- as.integer(seq(1000, 1000 + 200 * n_probes, length.out = n_probes))
 table(comethylation_clusters(chrom, pos, resid, max_gap = 5000L))

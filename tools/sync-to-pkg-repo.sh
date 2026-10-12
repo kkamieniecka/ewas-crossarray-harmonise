@@ -41,6 +41,21 @@ python3 tools/build_pkg.py
 Rscript -e 'roxygen2::roxygenise("pkg/crossarrayEWAS", clean = TRUE)' >/dev/null 2>&1
 Rscript tests/test_pkg_identity.R >/dev/null
 
+# Pull first: after acceptance the Bioconductor repository is the source of
+# the package and the core team pushes to it (version bumps at each release,
+# occasional fixes). Syncing without pulling would overwrite those commits, so
+# this fetches and rebases the checkout onto its remote before anything is
+# written into it, and stops if that is not clean.
+git -C "$dst" fetch --quiet "$remote"
+branch=$(git -C "$dst" rev-parse --abbrev-ref HEAD)
+if git -C "$dst" rev-parse --quiet --verify "$remote/$branch" >/dev/null; then
+    git -C "$dst" rebase --quiet "$remote/$branch" || {
+        echo "rebase onto $remote/$branch failed in $dst: resolve it before" >&2
+        echo "syncing, or the core team's commits will be overwritten" >&2
+        exit 3
+    }
+fi
+
 # --delete so a function removed from the core disappears downstream too;
 # .git and the package repository's own workflows are not ours to manage.
 rsync -a --delete --exclude .git --exclude .github \

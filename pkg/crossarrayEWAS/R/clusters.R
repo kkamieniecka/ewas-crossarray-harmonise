@@ -38,7 +38,10 @@
 #' exposure <- rep(c(0, 1), times = n_sub)
 #' M <- matrix(rnorm(n_probes * length(subject)), nrow = n_probes)
 #' M[1:3, exposure == 1] <- M[1:3, exposure == 1] + 1.2
-#' resid <- demean_rows_by_group(M, subject)
+#' # residuals of a model carrying subject and exposure, which is what
+#' # ewas_regions() builds internally
+#' design <- stats::model.matrix(~ subject + exposure)
+#' resid <- t(stats::lm.fit(design, t(M))$residuals)
 #' chrom <- rep("chr1", n_probes)
 #' pos <- as.integer(seq(1000, 1000 + 200 * n_probes, length.out = n_probes))
 #' table(comethylation_clusters(chrom, pos, resid, max_gap = 5000L))

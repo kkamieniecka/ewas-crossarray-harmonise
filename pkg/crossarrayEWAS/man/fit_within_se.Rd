@@ -9,67 +9,66 @@ fit_within_se(
   exposure,
   subject,
   covars = NULL,
-  assay = 1L,
+  assay = NULL,
   shrink_var = TRUE,
   var_method = "limma"
 )
 }
 \arguments{
-\item{object}{A `SummarizedExperiment`, or any object with `assay()` and
-`colData()` methods.}
+\item{object}{A \code{SummarizedExperiment}, or any object with \code{assay()} and
+\code{colData()} methods.}
 
-\item{exposure}{Character scalar naming a `colData` column, or a vector of
-length `ncol(object)`. Must vary within subject.}
+\item{exposure}{Character scalar naming a \code{colData} column, or a vector of
+length \code{ncol(object)}. Must vary within subject.}
 
-\item{subject}{Character scalar naming a `colData` column, or a vector of
-length `ncol(object)`, giving the subject each sample belongs to.}
+\item{subject}{Character scalar naming a \code{colData} column, or a vector of
+length \code{ncol(object)}, giving the subject each sample belongs to.}
 
-\item{covars}{Optional character vector naming `colData` columns, or a
-matrix with `ncol(object)` rows.}
+\item{covars}{Optional character vector naming \code{colData} columns, or a
+matrix with \code{ncol(object)} rows.}
 
-\item{assay}{Assay index or name, passed to
-[SummarizedExperiment::assay()].}
+\item{assay}{Assay index or name. \code{NULL}, the default, takes the assay
+named \code{M}, or the only assay when the object has one.}
 
-\item{shrink_var, var_method}{Passed to [fit_within()].}
+\item{shrink_var, var_method}{Passed to \code{\link[=fit_within]{fit_within()}}.}
 }
 \value{
-The list returned by [fit_within()]: `beta`, `se`, `z`, `df`,
-  `n_subjects`, `n_samples`. `beta`, `se` and `z` carry the assay's row
-  names when it has them.
+The list returned by \code{\link[=fit_within]{fit_within()}}: \code{beta}, \code{se}, \code{z}, \code{df},
+\code{n_subjects}, \code{n_samples}. \code{beta}, \code{se} and \code{z} carry the assay's row
+names when it has them.
 }
 \description{
 Extracts an assay and its design columns from a
-[SummarizedExperiment::SummarizedExperiment] (or anything extending it,
-including minfi's `GenomicRatioSet`) and passes them to [fit_within()].
+\link[SummarizedExperiment:SummarizedExperiment]{SummarizedExperiment::SummarizedExperiment} (or anything extending it,
+including minfi's \code{GenomicRatioSet}) and passes them to \code{\link[=fit_within]{fit_within()}}.
 The fit itself is the same code the pipeline runs; this function only
 resolves the object.
 }
 \details{
-`exposure`, `subject` and `covars` may name `colData` columns or be given
+\code{exposure}, \code{subject} and \code{covars} may name \code{colData} columns or be given
 as vectors and a matrix. Named covariates are expanded with
-[stats::model.matrix()] and the intercept is dropped, since the
+\code{\link[stats:model.matrix]{stats::model.matrix()}} and the intercept is dropped, since the
 within-subject transform removes it; a covariate with missing values is an
 error rather than a silently shortened design.
 
-The estimators assume M-values. An assay whose values all lie in `[0, 1]`
-is almost certainly beta values, and gets a warning rather than a refusal,
-because a legitimately M-value assay can land in that range when the probe
-set is small.
+The estimators assume M-values. With \code{assay = NULL} the assay named \code{M} is
+used when the object has one, which is what makes a \code{GenomicRatioSet}
+behave as expected: \code{minfi} stores \code{Beta} first, so taking the first assay
+would analyse beta values. A beta-valued assay is converted to M-values
+with a message.
 }
 \examples{
-if (requireNamespace("SummarizedExperiment", quietly = TRUE)) {
-  set.seed(1)
-  M <- matrix(rnorm(40), nrow = 10,
-              dimnames = list(paste0("cg", 1:10), NULL))
-  se <- SummarizedExperiment::SummarizedExperiment(
-    assays = list(M = M),
-    colData = data.frame(dose = c(0, 1, 0, 1),
-                         subject = c("s1", "s1", "s2", "s2")))
-  fit <- fit_within_se(se, "dose", "subject", shrink_var = FALSE)
-  head(fit$z)
-}
+set.seed(1)
+M <- matrix(rnorm(40), nrow = 10,
+            dimnames = list(paste0("cg", 1:10), NULL))
+se <- SummarizedExperiment::SummarizedExperiment(
+  assays = list(M = M),
+  colData = data.frame(dose = c(0, 1, 0, 1),
+                       subject = c("s1", "s1", "s2", "s2")))
+fit <- fit_within_se(se, "dose", "subject", shrink_var = FALSE)
+head(fit$z)
 }
 \seealso{
-[fit_within()] for the matrix interface and for what the
-  within-subject transform does to the design.
+\code{\link[=fit_within]{fit_within()}} for the matrix interface and for what the
+within-subject transform does to the design.
 }

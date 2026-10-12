@@ -1,7 +1,7 @@
 Package: crossarrayEWAS
 Type: Package
 Title: Design-Aware Region and Block Detection for Cross-Array Longitudinal EWAS
-Version: 0.99.0
+Version: 0.99.1
 Authors@R: c(
     person("Katarzyna", "Kamieniecka", role = c("aut", "cre"),
            email = "kkamieni@bradford.ac.uk",
@@ -27,14 +27,17 @@ Description: Estimation and region-calling routines for epigenome-wide
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.5.0)
-Imports: Matrix, jsonlite, limma, methods, stats
-Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle,
-    SummarizedExperiment, GenomicRanges, S4Vectors, IRanges
+Imports: GenomicRanges, IRanges, Matrix, S4Vectors, SummarizedExperiment,
+    jsonlite, limma, methods, stats
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, BiocStyle, minfi,
+    IlluminaHumanMethylation450kanno.ilmn12.hg19,
+    IlluminaHumanMethylationEPICanno.ilm10b4.hg19
 VignetteBuilder: knitr
 biocViews: DNAMethylation, DifferentialMethylation, Epigenetics,
     MethylationArray, Regression, Software
 BiocType: Software
-URL: https://github.com/kkamieniecka/ewas-crossarray-harmonise
-BugReports: https://github.com/kkamieniecka/ewas-crossarray-harmonise/issues
+URL: https://github.com/bioinfbrad/crossarrayEWAS
+BugReports: https://github.com/bioinfbrad/crossarrayEWAS/issues
 Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.0

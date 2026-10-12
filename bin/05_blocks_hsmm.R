@@ -34,20 +34,15 @@ log_msg <- function(...) {
 here <- dirname(normalizePath(sub("^--file=", "",
         grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
 
-## The estimators live in the crossarrayEWAS package (pkg/crossarrayEWAS,
-## generated from bin/ewasml.R). Use the installed package when there is one,
-## so a conda- or Galaxy-resolved environment does not need the core file
-## beside this script; fall back to sourcing the core, which is how a bare
-## checkout and the equivalence tests run. Which route was taken is recorded
-## in the run record, because the two are only identical as long as
-## tests/test_pkg_identity.R passes.
-core_source <- if (requireNamespace("crossarrayEWAS", quietly = TRUE)) {
-  suppressPackageStartupMessages(library(crossarrayEWAS))
-  sprintf("crossarrayEWAS %s", utils::packageVersion("crossarrayEWAS"))
-} else {
-  source(file.path(here, "ewasml.R"))
-  "bin/ewasml.R"
-}
+## The estimators are sourced from bin/ewasml.R rather than loaded from the
+## installed crossarrayEWAS package. The package exports the user-facing
+## interface only -- ewas_regions(), ewas_blocks() and the callers they are
+## built from -- while this driver also uses the numerical plumbing
+## (pinv(), demean_by_group(), within_df(), fold_assign()), which is internal
+## there. The two are the same code as long as tests/test_pkg_identity.R
+## passes, and which route was taken is recorded in the run record.
+source(file.path(here, "ewasml.R"))
+core_source <- "bin/ewasml.R"
 
 # ---------------------------------------------------------------------------
 opt_list <- list(

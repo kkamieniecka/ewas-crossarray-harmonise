@@ -33,9 +33,9 @@ fit_block_hsmm(
 \item{seed}{accepted and ignored; the fit is deterministic.}
 }
 \value{
-list with ``mu``, ``sigma``, ``pi`` (states ordered by ``mu``),
-  ``length_scale``, ``posterior`` (clusters x 3), ``loglik``, ``n_iter`` and
-  ``neutral``, the 1-based column pinned at mu = 0.
+list with \code{mu}, \code{sigma}, \code{pi} (states ordered by \code{mu}),
+\code{length_scale}, \code{posterior} (clusters x 3), \code{loglik}, \code{n_iter} and
+\code{neutral}, the 1-based column pinned at mu = 0.
 }
 \description{
 Fits hypo / neutral / hyper states over cluster-level effects with
@@ -59,15 +59,15 @@ finder's thresholded curve.
 DIVERGENCE from the Python, and the only one here: A(d) is never
 materialised. Because A = p I + (1 - p) 1 pi', the forward and backward
 updates collapse to
-    alpha' A = p * alpha + (1 - p) * sum(alpha) * pi_stat
-    A (B * beta) = p * (B * beta) + (1 - p) * sum(pi_stat * B * beta)
+alpha' A = p * alpha + (1 - p) * sum(alpha) * pi_stat
+A (B * beta) = p * (B * beta) + (1 - p) * sum(pi_stat * B * beta)
 which is the same arithmetic in a different association order (~1e-15
 relative) and avoids an n x 3 x 3 array per EM iteration. The Python is left
 as the reference implementation because the GSE237561 results were produced
 with it; tests/test_equivalence.R measures the resulting difference in the
 posterior and in the called blocks.
 
-`seed` is accepted and ignored, as in the Python: Baum-Welch from these
+\code{seed} is accepted and ignored, as in the Python: Baum-Welch from these
 fixed starting values is deterministic, so this fit -- unlike stage 04's
 resampling -- is reproducible across languages exactly.
 }

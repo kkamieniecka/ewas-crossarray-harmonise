@@ -24,13 +24,8 @@
 #'   ``rcond * max(d)`` are inverted to zero. The default, ``1e-15``, matches
 #'   ``numpy.linalg.pinv`` so the R and Python cores agree.
 #' @return Numeric matrix, the pseudo-inverse of ``A``.
-#' @examples
-#' X <- cbind(1, c(0, 1, 0, 1), c(2, 2, 2, 2))  # third column redundant
-#' A <- crossprod(X)
-#' qr(A)$rank            # 2, not 3
-#' P <- pinv(A)
-#' all.equal(A %*% P %*% A, A)  # the defining property still holds
-#' @export
+#' @keywords internal
+#' @noRd
 pinv <- function(A, rcond = 1e-15) {
   s <- svd(A)
   cutoff <- rcond * max(s$d)
@@ -56,10 +51,8 @@ pinv <- function(A, rcond = 1e-15) {
 #'   the returned matrix carries the integer group codes as row names, which is
 #'   an artefact of the grouped-sum step rather than information about the
 #'   samples.
-#' @examples
-#' X <- cbind(exposure = c(0, 1, 0, 1), age = c(40, 41, 55, 56))
-#' demean_by_group(X, groups = c("A", "A", "B", "B"))
-#' @export
+#' @keywords internal
+#' @noRd
 demean_by_group <- function(X, groups) {
   X <- as.matrix(X)
   storage.mode(X) <- "double"
@@ -85,10 +78,8 @@ demean_by_group <- function(X, groups) {
 #'   identifiers.
 #' @return numeric matrix of the same dimensions, each group's mean removed per
 #'   row.
-#' @examples
-#' M <- matrix(as.double(1:8), nrow = 2)
-#' demean_rows_by_group(M, groups = c("A", "A", "B", "B"))
-#' @export
+#' @keywords internal
+#' @noRd
 demean_rows_by_group <- function(M, groups) {
   g <- match(groups, sort(unique(groups)))
   ng <- max(g)

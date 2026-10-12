@@ -15,12 +15,6 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4)
-
-# The class entry points are guarded: SummarizedExperiment and GenomicRanges
-# are Suggests, so the vignette still builds where they are absent.
-has_bioc <- all(vapply(
-  c("SummarizedExperiment", "GenomicRanges", "IRanges", "S4Vectors"),
-  requireNamespace, logical(1), quietly = TRUE))
 ```
 
 # What this package is for
@@ -54,9 +48,28 @@ the two generations, so cohort is nested inside array generation rather than
 crossed with it, and a batch correction taken on cohort is not identifiable
 there.
 
+# Installation
+
+```{r install, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("crossarrayEWAS")
+```
+
 ```{r load}
 library(crossarrayEWAS)
 ```
+
+# The two functions most users need
+
+`ewas_regions()` and `ewas_blocks()` take a `SummarizedExperiment` — including
+a `GenomicRatioSet` from `r BiocStyle::Biocpkg("minfi")`, which extends one —
+and return a `GRanges`. Each runs the analysis the pipeline's corresponding
+stage runs: assay and design extraction, within-subject probe effects,
+co-methylation clustering, smoothness chosen by held-out subjects, region or
+block calling, and, when asked for, a permutation null and subject-level
+selection stability. Everything else exported here is a building block one of
+them assembles, and the later sections take those apart.
 
 # A simulated two-array cohort
 
@@ -140,174 +153,241 @@ colnames(M) <- sprintf("%s_v%d", subject,
 dim(M)
 ```
 
-The package takes a plain matrix of M-values with probes in rows plus parallel
-vectors for the design. Nothing here needs the IDATs or an array manifest: the
-harmonisation stage that builds this matrix from both array generations is a
-separate step in the pipeline, and `read_f64()` is what loads the matrix it
-writes.
+Assembled into a `SummarizedExperiment`, this is the shape the package works
+on: an M-value assay, probe coordinates in `rowRanges()`, and the design in
+`colData()`. A `GenomicRatioSet` carries the same three things, which is why
+one can be passed straight in.
 
-The matrix is simulated here so the vignette runs anywhere; on real data it
-is the harmonised matrix written by stage 01 of the pipeline, read back with
-`read_f64()`.
-
-# Probe-level effects, fitted within subject
-
-`fit_within()` does the whole transform: it demeans the design and the
-M-values by subject, drops design columns with no within-subject variation,
-solves once for all probes, and moderates the residual variances towards their
-common trend.
-
-```{r fit-within}
-fit <- fit_within(M, exposure, subject, covars)
-str(fit)
+```{r assemble}
+se <- SummarizedExperiment::SummarizedExperiment(
+  assays = list(M = M),
+  rowRanges = GenomicRanges::GRanges(chrom, IRanges::IRanges(pos, width = 2L)),
+  colData = data.frame(exposure = exposure, subject = subject, covars,
+                       array_type = array_type))
+se
 ```
-
-The reported degrees of freedom are what the within transform leaves, not the
-sample count. A subject with a single visit contributes nothing to this
-contrast and is carried but not informative.
-
-```{r fit-within-recovery}
-# effects are recovered where they were planted, and not elsewhere
-where <- ifelse(beta_true > 0.1, "region",
-                ifelse(beta_true > 0, "block", "null"))
-round(tapply(abs(fit$z), where, median), 3)
-```
-
-`var_method` chooses how the per-probe residual variance is moderated before
-the z statistics are formed. The default `"limma"` calls `limma::squeezeVar()`,
-the reference implementation of that model: maintained, well behaved in the
-degenerate cases, and already a dependency of the harmonisation stage. `"mom"`
-is the method-of-moments fit ported from the Python twin of this core, and it
-exists so the two implementations can be compared arithmetically on identical
-input.
-
-The rule to follow is the one the pipeline follows. The stage drivers default
-to `"limma"` and the published analysis was run with it, so report with the
-default. Choose `"mom"` when you are reproducing the Python path, or deploying
-where the Bioconductor stack is not installed, and name it in the methods if a
-reported result uses it.
-
-# Co-methylation clusters
-
-A region should not be allowed to run across probes that are not correlated,
-so probes are grouped by their **residual** co-methylation, after the exposure
-effect has been projected out. This is the idiom the stage-04 driver uses, and
-`pinv()` is exported so it can be reproduced here.
-
-```{r clusters}
-resid <- demean_rows_by_group(M, subject)
-Xw    <- demean_by_group(cbind(exposure, covars), subject)
-Xw    <- Xw[, apply(abs(Xw), 2, max) > 1e-9, drop = FALSE]
-resid <- resid - (resid %*% Xw %*% pinv(crossprod(Xw))) %*% t(Xw)
-
-cl <- comethylation_clusters(rep(21L, n_probes), pos, resid,
-                             max_gap = 1000L, rho_min = 0.30)
-n_cl <- if (max(cl) >= 0) max(cl) + 1L else 0L
-c(clusters = n_cl, clustered_probes = sum(cl >= 0), singletons = sum(cl < 0))
-```
-
-Cluster labels are 0-based and `-1` marks a probe that joined nothing, which is
-the convention the Python implementation of the same estimator uses.
 
 # Regions
 
-Two steps: a distance-decaying total-variation penalty, then segmentation of
-the denoised track. The penalty falls off with the gap between probes, so a
-wide gap is cheap to jump and a tight pair is not, and the region boundaries
-are the jumps in the piecewise-constant solution rather than crossings of a
-threshold.
-
 ```{r regions}
-w     <- 1 / fit$se^2
-lam   <- distance_penalty(pos, lam0 = 0.5, decay_bp = 1000, w = w)
-theta <- tv_denoise(fit$beta, w, lam, n_iter = 3000L)
-
-cl_arg <- ifelse(cl >= 0, cl, -seq_along(cl))
-obs <- call_regions(chrom, pos, fit$beta, fit$se, theta,
-                    min_probes = 3L, min_effect = 0.05, cluster = cl_arg)
-reg <- obs$table
-c(regions = nrow(reg), max_abs_z = round(obs$max_abs_z, 2))
-head(reg[order(-abs(reg$z)),
-         c("chr", "start", "end", "n_probes", "effect_M", "z")], 5)
+regions <- ewas_regions(se, exposure = "exposure", subject = "subject",
+                        covars = c("cell_fraction", "smoking_score"),
+                        lambda = 0.5, min_probes = 3L, min_effect = 0.05,
+                        n_perm = 20L, n_boot = 8L, perm_iter = 400L)
+regions[order(-abs(regions$z))][seq_len(min(5L, length(regions)))]
 ```
 
-`min_effect` is on the M-value scale and is a scientific choice, not a tuning
-knob. In the clozapine analysis `min_effect` was 0.05 on the M-value scale per 100
-days of treatment: a segment has to move at least that much to be called,
-whatever its z. At mid-range methylation that is about 0.9 percentage points
-of beta per 100 days, so roughly 3 points over a year of treatment and 6 over
-two, falling to about 2 and 4 points at beta 0.2 or 0.8. The floor is set
+The ranges come back in genomic order with the per-region statistics as
+metadata columns, and the run's own summary in `metadata()`: the observed
+maximum |z| the null is compared against, the penalty used, the number of
+co-methylation clusters, and the degrees of freedom the within-subject
+transform left.
+
+```{r regions-metadata}
+md <- S4Vectors::metadata(regions)
+c(max_abs_z = round(md$max_abs_z, 2), lambda = md$lambda,
+  clusters = md$n_clusters, df = md$fit$df)
+```
+
+The planted region is recovered and the rest of the genome is not:
+
+```{r regions-recovery}
+planted <- range(pos[region_probes])
+hit <- GenomicRanges::start(regions) <= planted[2] &
+  planted[1] <= GenomicRanges::end(regions)
+c(regions = length(regions), overlapping_the_planted_region = sum(hit))
+```
+
+Three arguments carry most of the scientific content of a run.
+
+`min_effect` is on the M-value scale and is a choice about what counts as an
+effect, not a tuning knob. In the clozapine analysis it was 0.05 M-value units
+per 100 days of treatment: a segment has to move at least that much to be
+called, whatever its z. At mid-range methylation that is about 0.9 percentage
+points of beta per 100 days, so roughly 3 points over a year of treatment and 6
+over two, falling to about 2 and 4 points at beta 0.2 or 0.8. The floor is set
 there because a slope below it accumulates to less than the change a single
 array can resolve over a realistic follow-up window, so a segment that clears
 it is reportable on the beta scale as well as on the z scale.
 
-`lam0` is cross-validated over held-out **subjects** in the pipeline rather
-than fixed as it is here. `fold_assign()` is the split it uses: deterministic
-and language-independent, so the R and Python drivers agree on it.
+`lambda` is fixed above to keep the vignette quick. Left at its default it is a
+vector, and the penalty is then chosen by cross-validation over folds of whole
+**subjects**, with the score table returned in `metadata()$lambda_cv`.
+Held-out subjects rather than held-out samples are required: a subject's
+visits are the unit the within-subject effect is estimated from, so splitting
+them across train and test would leak the quantity being validated.
 
-```{r folds}
-folds <- fold_assign(subject, n_folds = 5L, seed = 0)
-lengths(folds)          # subjects per fold, not samples
+`var_method` chooses how the per-probe residual variance is moderated before
+the z statistics are formed. The default `"limma"` calls `limma::squeezeVar()`,
+the reference implementation of that model. `"mom"` is the method-of-moments
+fit ported from the Python twin of this core, and it exists so the two
+implementations can be compared arithmetically on identical input. The stage
+drivers default to `"limma"` and the published analysis was run with it, so
+report with the default and name `"mom"` in the methods if a reported result
+uses it.
+
+# Long-range blocks
+
+Blocks are a coarser statement: co-methylated probes are collapsed to one
+profile per cluster, effects are refitted at cluster level, and a three-state
+hidden semi-Markov model runs along the chromosome with transition
+probabilities that decay with genomic distance.
+
+```{r blocks}
+blocks <- ewas_blocks(se, exposure = "exposure", subject = "subject",
+                      covars = c("cell_fraction", "smoking_score"),
+                      max_gap = 1500L, rho_min = 0.20,
+                      min_fit_clusters = 100L)
+blocks
 ```
 
-`within_df()` is the cheap test for whether a fold or a subsample is estimable
-before paying for the fit: it returns the residual degrees of freedom the
-within transform would leave, and zero when the exposure is annihilated
-altogether.
+The fitted states, the collapsed clusters and their posteriors are in
+`metadata()`. `hsmm$neutral` is the column of the posterior holding the state
+pinned at `mu = 0`, and it is **not** always the middle one: if every cluster
+effect falls on one side of zero that column sorts to an end and only one
+direction can be called, which `hsmm$one_sided` reports.
 
-```{r within-df}
-held_out <- subject %in% folds[[1]]
-c(all = within_df(exposure, subject, covars),
-  train = within_df(exposure[!held_out], subject[!held_out],
-                    covars[!held_out, , drop = FALSE]))
+```{r blocks-states}
+hs <- S4Vectors::metadata(blocks)$hsmm
+data.frame(state = hs$states, mu = round(hs$mu, 4),
+           sigma = round(hs$sigma, 4), pi = round(hs$pi, 3))
+clusters <- S4Vectors::metadata(blocks)$clusters
+length(clusters)
 ```
 
-# Working from a SummarizedExperiment
+```{r caption, include = FALSE}
+# chunk options are evaluated before the chunk body, so the caption is set here
+cap <- paste("Cluster-level effects along the chromosome. Shaded span:",
+             "the planted block. Bars: the blocks called.")
+```
 
-Everything above is matrices and parallel vectors, which is what the pipeline
-stages pass around. If your data is already a `SummarizedExperiment` — or a
-`GenomicRatioSet`, which extends one — four functions take you in and out
-without unpacking it by hand: `sort_probes()`, `probe_coords()`,
-`fit_within_se()` and `as_granges()`.
+```{r block-plot, fig.cap = cap}
+planted_block <- range(pos[block_probes])
+cmid <- (GenomicRanges::start(clusters) + GenomicRanges::end(clusters)) / 2
+plot(cmid / 1e6, clusters$effect_M, pch = 16, cex = 0.5, col = "grey40",
+     xlab = "position (Mb)", ylab = "effect (M-value per exposure unit)")
+rect(planted_block[1] / 1e6, par("usr")[3], planted_block[2] / 1e6,
+     par("usr")[4], col = "#1b9e7733", border = NA)
+abline(h = 0, col = "grey70")
+if (length(blocks))
+  segments(GenomicRanges::start(blocks) / 1e6, 0,
+           GenomicRanges::end(blocks) / 1e6, 0, col = "#d95f02", lwd = 4)
+```
 
-```{r se-in, eval = has_bioc}
-se <- SummarizedExperiment::SummarizedExperiment(
-  assays = list(M = M),
-  rowRanges = GenomicRanges::GRanges(chrom, IRanges::IRanges(pos, width = 2L),
-                                     cluster = cl),
-  colData = data.frame(exposure = exposure, subject = subject, covars,
-                       array_type = array_type))
+A region and a block are not two attempts at the same quantity. Regions are
+called on every harmonised probe at the resolution of a few probes, median 84
+bp over 3 probes in the published run, and locate a focal effect. Blocks are
+called on open-sea probes only, at cluster resolution, and in the same run
+returned 38 blocks of median width 134 kb spanning a median of 9 clusters,
+against 207 regions. A block is therefore evidence of a shallow shift across a
+domain that is largely unmeasured between clusters, and a region is evidence
+of a local one; the two can coexist, and neither subsumes the other.
 
-se  <- sort_probes(se)          # genomic order, once, before the fit
-co  <- probe_coords(se)
-fse <- fit_within_se(se, "exposure", "subject",
+When they disagree, they are reported as what they are: two independent lines
+of evidence, each on its own scale. A block with no region inside it is not
+demoted, and a region inside a neutral block is not discounted; the region
+table and the block table are read side by side rather than one filtering the
+other.
+
+# From 450K and EPIC data
+
+`ewas_regions()` needs one object spanning both array generations. Building it
+is `r BiocStyle::Biocpkg("minfi")`'s job, and it is three calls: combine the
+two `RGChannelSet`s on the probes they share, convert to ratios, and map to
+the genome. The pipeline's stage 01 does exactly this, with quality control
+and probe filtering around it, and writes the matrix `read_f64()` reads back.
+
+```{r harmonise, eval = FALSE}
+library(minfi)
+
+rg450 <- read.metharray.exp(targets = targets_450k)
+rgepic <- read.metharray.exp(targets = targets_epic)
+
+# combineArrays() keeps the probes shared by both designs and sets the
+# resulting object's array to the older of the two
+rg <- combineArrays(rg450, rgepic, outType = "IlluminaHumanMethylation450k")
+
+grset <- mapToGenome(ratioConvert(preprocessQuantile(rg)))
+SummarizedExperiment::colData(grset)$subject <- targets$Subject_ID
+SummarizedExperiment::colData(grset)$exposure <- targets$days_on_drug / 100
+
+regions <- ewas_regions(grset, "exposure", "subject")
+```
+
+Two things to check before the fit, because neither is detectable afterwards.
+The exposure has to vary between visits of the same subject, or there is
+nothing within-subject to estimate and `ewas_regions()` stops. And a covariate
+that is constant within subject — sex, genotype, array type in a cohort where
+no subject spans both generations — is absorbed by the transform and cannot be
+passed as a covariate; this is the point of the design rather than a
+limitation of it.
+
+# A real cohort
+
+A 2,000-probe subset of GSE237561 ships with the package as a
+`GenomicRatioSet`, with the script that built it in `inst/scripts/`. It is the
+clozapine treatment series the method was developed on: 126 arrays from 38
+subjects, 92 on 450K and 34 on EPIC, with the exposure being days on treatment
+and no subject spanning the two array generations.
+
+```{r real-data}
+path <- system.file("extdata", "GSE237561_chr21_subset.rds",
+                    package = "crossarrayEWAS")
+grset <- readRDS(path)
+grset
+table(SummarizedExperiment::colData(grset)$array_type)
+```
+
+```{r real-regions}
+real <- ewas_regions(grset, exposure = "exposure", subject = "subject",
+                     lambda = 0.5, min_probes = 3L, min_effect = 0.05)
+length(real)
+if (length(real))
+  real[order(-abs(real$z))][seq_len(min(3L, length(real)))]
+```
+
+The subset is a thousandth of the harmonised panel and is here so the
+interface can be exercised on real data, not to reproduce the published
+result: regions called on 2,000 probes of one chromosome are not the regions
+called on 422,898 probes genome-wide, and the permutation null is not run here
+because its cost is what the pipeline exists for.
+
+# Building blocks
+
+The two functions above are assembled from exported pieces, and an analysis
+that needs to depart from them can use those directly. The clustering step is
+representative: probes are grouped by their **residual** co-methylation, after
+subject means and the design have been projected out.
+
+```{r building-blocks}
+design <- stats::model.matrix(
+  ~ subject + exposure + cell_fraction + smoking_score,
+  data = as.data.frame(SummarizedExperiment::colData(se)))
+resid <- t(stats::lm.fit(design, t(M))$residuals)
+
+cl <- comethylation_clusters(chrom, pos, resid, max_gap = 1000L,
+                             rho_min = 0.30)
+c(clusters = max(cl) + 1L, clustered = sum(cl >= 0), singletons = sum(cl < 0))
+```
+
+Cluster labels are 0-based and `-1` marks a probe that joined nothing, the
+convention the Python implementation of the same estimator uses.
+
+```{r blocks-manual}
+fit <- fit_within_se(se, "exposure", "subject",
                      covars = c("cell_fraction", "smoking_score"))
-identical(round(fse$z[names(fit$z)], 10), round(fit$z, 10))
+w <- 1 / fit$se^2
+lam <- distance_penalty(pos, lam0 = 0.5, decay_bp = 1000, w = w)
+theta <- tv_denoise(fit$beta, w, lam, n_iter = 3000L)
+obs <- call_regions(chrom, pos, fit$beta, fit$se, theta, min_probes = 3L,
+                    min_effect = 0.05, cluster = ifelse(cl >= 0, cl, -seq_along(cl)))
+identical(nrow(obs$table), length(regions))
 ```
 
-The fit is the same code: `fit_within_se()` only resolves the object, and the
-identity above is the point of it. Two things it does that a hand-written
-extraction usually forgets — it orders nothing silently, which is why
-`sort_probes()` is a separate call, and it warns when the assay looks like
-beta values, since the region and block callers assume the M scale.
-
-Region and block calls come back as data frames because that is what the
-pipeline writes to CSV. `as_granges()` turns either into a `GRanges`, keeping
-`max_abs_z` in `metadata()` because that is the value a permutation null is
-compared against.
-
-```{r se-out, eval = has_bioc}
-gr <- as_granges(obs)
-gr[order(-abs(GenomicRanges::mcols(gr)$z))][1:3]
-S4Vectors::metadata(gr)$max_abs_z
-```
-
-`SummarizedExperiment` and `GenomicRanges` are `Suggests`, not `Imports`: the
-numerical core is base R plus limma so the pipeline can source it in a conda
-environment with no Bioconductor stack, and the conda build of this package
-inherits that. That is also why these are plain functions rather than S4
-methods on `fit_within()` — `setMethod()` would need the generic's package at
-install time.
+`as_granges()` converts either caller's table, keeping `max_abs_z` in
+`metadata()`; `sort_probes()` and `probe_coords()` are the object accessors the
+high-level functions use, and are exported because an analysis that calls
+`fit_within()` directly needs the same ordering guarantee.
 
 # Resampling subjects, not samples
 
@@ -326,126 +406,86 @@ c(observed = round(max(abs(fit$z)), 2),
   permuted = round(max(abs(fit_perm$z)), 2))
 ```
 
-`stability_selection()` refits on subject-level subsamples and reports how
-often each region survives. The driver default is 100 resamples; this runs 8 to
-keep the vignette quick.
+`n_perm` runs that null inside `ewas_regions()`, and `p_fwer` is the fraction
+of null replicates whose maximum |z| reaches a region's own, so it is a
+family-wise statement across the genome rather than a pointwise one.
+`p_fwer_mcse` is the Monte Carlo standard error of that fraction, reported
+because the decision at 0.05 is a step function of the null tail: a p-value
+whose error straddles the threshold is evidence about `n_perm`, not about the
+region. `perm_scheme = "naive"` shuffles across subjects instead, the scheme
+`r BiocStyle::Biocpkg("bumphunter")` uses, and exists to quantify its
+mis-calibration in a longitudinal design rather than to be used.
 
-The callback is handed a set of **subject identifiers**, not column indices,
-and returns the keys it re-discovered. Boundaries move between subsamples, so
-an observed region counts as re-discovered when the intervals overlap rather
-than when the endpoints match, the same convention the stage-04 driver uses.
+```{r perm-table}
+GenomicRanges::mcols(regions)[order(-abs(regions$z)),
+                              c("z", "p_fwer", "p_fwer_mcse")][1:3, ]
+S4Vectors::metadata(regions)$perm_scheme
+```
+
+`n_boot` adds selection stability: regions are re-called on repeated
+half-samples of subjects, and `stability` is the fraction of subsamples in
+which an overlapping region was called again. Boundaries move between
+subsamples, so overlap rather than matching endpoints is the criterion.
+`stability_selection()` is exported for analyses that want the same resampling
+around a different estimator; the callback is handed subject identifiers, not
+column indices, and returns the keys it re-discovered.
 
 ```{r stability}
-keys <- sprintf("%s:%d-%d", reg$chr, reg$start, reg$end)
-
-fit_subset <- function(sub) {
-  sel <- subject %in% sub
-  if (within_df(exposure[sel], subject[sel],
-                covars[sel, , drop = FALSE]) <= 0)
-    return(character(0))    # this subsample cannot estimate the contrast
-  f  <- fit_within(M[, sel, drop = FALSE], exposure[sel], subject[sel],
-                   covars[sel, , drop = FALSE])
-  th <- tv_denoise(f$beta, 1 / f$se^2, lam, n_iter = 500L)
-  r  <- call_regions(chrom, pos, f$beta, f$se, th, min_probes = 3L,
-                     min_effect = 0.05, cluster = cl_arg)$table
-  if (!nrow(r)) return(character(0))
-  keys[vapply(seq_len(nrow(reg)), function(i)
-    any(r$chr == reg$chr[i] & r$start <= reg$end[i] & reg$start[i] <= r$end),
-    logical(1))]
-}
-
-set.seed(1L)
-ss <- stability_selection(fit_subset, subject, n_boot = 8L, frac = 0.5)
-reg$stability <- ifelse(keys %in% names(ss$freq), ss$freq[keys], 0)
-reg$stability[is.na(reg$stability)] <- 0
-head(reg[order(-reg$stability, -abs(reg$z)),
-         c("chr", "start", "end", "n_probes", "z", "stability")], 5)
+GenomicRanges::mcols(regions)[order(-regions$stability, -abs(regions$z)),
+                              c("n_probes", "z", "stability")][1:3, ]
 ```
 
-The published run resampled 50 subject subsamples at half the cohort; the
-eight used above only keep the example fast. Selection frequency is carried as
-a column beside z rather than used as a filter, so a region that survives the
-permutation null but is unstable across subsamples stays visible and is read
-as exactly that. The threshold reported on is 0.6, which is conventional in
-the stability-selection literature: regions selected in at least 60% of
-subsamples are described as stable, and the column annotates the region table
-rather than removing rows from it.
+The published run used 200 permutations and 50 half-samples; the small numbers
+here keep the vignette quick. Selection frequency is carried beside z rather
+than used as a filter, so a region that survives the permutation null but is
+unstable across subsamples stays visible and is read as exactly that. The
+threshold reported on is 0.6, conventional in the stability-selection
+literature: regions selected in at least 60% of subsamples are described as
+stable, and the column annotates the table rather than removing rows from it.
 
-# Long-range blocks
+# Comparison with related packages
 
-Blocks are called at a coarser resolution: clusters are collapsed to their mean
-profile, effects are refitted at cluster level, and a three-state hidden
-semi-Markov model runs along the chromosome with transition probabilities that
-decay with genomic distance.
+What `crossarrayEWAS` adds is a design, not a new smoother. Three differences
+matter when choosing between it and the established tools.
 
-```{r collapse}
-runs <- split(which(cl >= 0), cl[cl >= 0])
+*Where the design sits.* `r BiocStyle::Biocpkg("bumphunter")`,
+`r BiocStyle::Biocpkg("DMRcate")`, `r BiocStyle::Biocpkg("ENmix")`
+(`combp()`, `ipdmr()`) and `r BiocStyle::Biocpkg("coMethDMR")` all take a
+per-probe statistic from a model the user fits, and a repeated-measures design
+has to be handled in that model: `limma::duplicateCorrelation()` with a
+subject block, or `r BiocStyle::Biocpkg("variancePartition")`'s `dream()` with
+a random intercept. Both estimate a between-subject component and a
+within-subject one and then combine them, which is exactly what a cohort with
+array generation nested in subject cannot support: the between-subject
+contrast is partly the array contrast. Here the probe-level effect is
+differenced within subject before any region calling, so the confounded
+component is absorbed instead of modelled, and no array indicator is needed.
 
-Mc     <- t(vapply(runs, function(rows) colMeans(M[rows, , drop = FALSE]),
-                   numeric(ncol(M))))
-cstart <- vapply(runs, function(rows) min(pos[rows]), numeric(1))
-cend   <- vapply(runs, function(rows) max(pos[rows]), numeric(1))
-cmid   <- (cstart + cend) / 2
-cchr   <- rep("chr21", nrow(Mc))
+*How the null is built.* `bumphunter` permutes the outcome labels across
+samples, which in a longitudinal cohort breaks the within-subject pairing and
+the between-subject structure at once. `within_subject_permutation()` permutes
+exposure among the visits of one subject, leaving subject, array, chip, visit
+count and the within-subject covariance intact; `perm_scheme = "naive"`
+reproduces the other scheme so the difference can be measured on the data at
+hand rather than assumed.
 
-o <- order(cmid)
-Mc <- Mc[o, , drop = FALSE]
-cstart <- cstart[o]; cend <- cend[o]; cmid <- cmid[o]
-dim(Mc)
-```
+*How boundaries are placed.* `bumphunter` and `DMRcate` smooth the statistic
+and threshold the result; `combp()` and `ipdmr()` combine spatially
+autocorrelated p-values; `coMethDMR` tests pre-defined co-methylated regions.
+`ewas_regions()` solves a total-variation problem whose penalty decays with
+the gap between probes, so the solution is piecewise constant and a boundary
+is a jump in it: a wide gap is cheap to cross, a tight pair is not, and no
+kernel width has to be chosen. For blocks, `minfi::blockFinder()` collapses
+probes into fixed-width bins and smooths; `ewas_blocks()` collapses into
+clusters defined by observed within-subject co-methylation and calls blocks
+from a three-state model whose transition probabilities decay with distance,
+so a block's extent is a model statement with a posterior rather than a
+thresholded curve.
 
-```{r hsmm}
-fit_cl <- fit_within(Mc, exposure, subject, covars)
-hs <- fit_block_hsmm(fit_cl$beta, fit_cl$se, cmid, cchr,
-                     length_scale = 250000, seed = 1L)
-labs <- state_labels(hs$neutral)
-data.frame(state = labs, mu = round(hs$mu, 4), sigma = round(hs$sigma, 4),
-           pi = round(hs$pi, 3))
-```
-
-`hs$neutral` is the column of the posterior holding the state pinned at
-`mu = 0`, and it is **not** always the middle one: if every cluster effect
-falls on one side of zero that column sorts to an end, and only one direction
-can then be called. Pass it to `call_blocks()` rather than assuming the middle
-column, or every block comes back mislabelled.
-
-```{r blocks}
-bl <- call_blocks(cchr, cstart, cend, hs$posterior, min_post = 0.80,
-                  min_clusters = 3L, neutral = hs$neutral)
-if (nrow(bl)) bl[order(-bl$width), ][seq_len(min(5L, nrow(bl))), ] else bl
-```
-
-```{r caption, include = FALSE}
-# chunk options are evaluated before the chunk body, so the caption is set here
-cap <- paste("Cluster-level effects along the chromosome. Shaded span:",
-             "the planted block. Bars: the blocks called.")
-```
-
-```{r block-plot, fig.cap = cap}
-planted <- range(pos[block_probes])
-plot(cmid / 1e6, fit_cl$beta, pch = 16, cex = 0.5, col = "grey40",
-     xlab = "position (Mb)", ylab = "effect (M-value per exposure unit)")
-rect(planted[1] / 1e6, par("usr")[3], planted[2] / 1e6, par("usr")[4],
-     col = "#1b9e7733", border = NA)
-abline(h = 0, col = "grey70")
-if (nrow(bl))
-  segments(bl$start / 1e6, 0, bl$end / 1e6, 0, col = "#d95f02", lwd = 4)
-```
-
-A region and a block are not two attempts at the same quantity. Regions are
-called on every harmonised probe at the resolution of a few probes, median 84
-bp over 3 probes in the published run, and locate a focal effect. Blocks are
-called on open-sea probes only, at cluster resolution, and in the same run
-returned 38 blocks of median width 134 kb spanning a median of 9 clusters,
-against 207 regions. A block is therefore evidence of a shallow shift across a
-domain that is largely unmeasured between clusters, and a region is evidence
-of a local one; the two can coexist, and neither subsumes the other.
-
-When they disagree, they are reported as what they are: two independent lines
-of evidence, each on its own scale. A block with no region inside it is not
-demoted, and a region inside a neutral block is not discounted; the region
-table and the block table are read side by side rather than one filtering the
-other.
+Where the design is not longitudinal, or a single array generation is in play,
+the established tools are the better choice: they are mature, widely used, and
+their smoothing assumptions are well characterised. This package is for the
+case they are not built for.
 
 # Relationship to the pipeline and the Galaxy suite
 

@@ -16,7 +16,14 @@
 #' function under \sQuote{Notes carried over from the pipeline source}.
 #'
 #' @keywords internal
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom IRanges IRanges
 #' @importFrom Matrix sparseMatrix bandSparse Cholesky solve
+#' @importFrom S4Vectors metadata metadata<-
+#' @importFrom SummarizedExperiment assay assayNames assays colData rowData
+#'   rowRanges
 #' @importFrom jsonlite fromJSON
-#' @importFrom stats median var quantile pnorm
+#' @importFrom limma squeezeVar
+#' @importFrom methods is
+#' @importFrom stats median model.matrix pnorm quantile reformulate var
 "_PACKAGE"

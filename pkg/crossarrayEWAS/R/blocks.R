@@ -208,10 +208,8 @@ fit_block_hsmm <- function(y, se, pos, chrom, length_scale = 250000,
 #' @param neutral 1-based column of the pinned state, i.e.
 #'   ``fit_block_hsmm()$neutral``.
 #' @return character vector of length 3.
-#' @examples
-#' state_labels(2)
-#' state_labels(1)
-#' @export
+#' @keywords internal
+#' @noRd
 state_labels <- function(neutral) {
   neutral <- as.integer(neutral)
   out <- character(3)

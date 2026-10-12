@@ -17,14 +17,14 @@ tv_denoise(
 \arguments{
 \item{y}{numeric effect estimate per probe.}
 
-\item{w}{precision weight per probe, normally ``1 / se^2``.}
+\item{w}{precision weight per probe, normally \code{1 / se^2}.}
 
-\item{lam}{penalty per gap; length ``length(y) - 1``, as returned by
-``distance_penalty()``.}
+\item{lam}{penalty per gap; length \code{length(y) - 1}, as returned by
+\code{distance_penalty()}.}
 
 \item{n_iter}{maximum ADMM iterations.}
 
-\item{rho}{ADMM step size; ``NULL`` picks a scale-free default.}
+\item{rho}{ADMM step size; \code{NULL} picks a scale-free default.}
 
 \item{tol}{convergence tolerance on the primal iterate.}
 
@@ -47,7 +47,7 @@ Weighted total-variation denoising by ADMM.
 Solves  min_theta 0.5*sum_i w_i (y_i - theta_i)^2 + sum_i lam_i |d theta_i|
 with y in genomic order within one contiguous run.
 
-lam is length n-1. A distance-decayed lam is what makes this a *genomic*
+lam is length n-1. A distance-decayed lam is what makes this a \emph{genomic}
 smoother: a large gap gets lam ~ 0 and is free to break, which is precisely
 the behaviour loess with a fixed span cannot express.
 

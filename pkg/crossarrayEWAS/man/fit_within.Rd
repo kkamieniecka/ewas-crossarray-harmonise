@@ -26,11 +26,11 @@ them makes the design rank-deficient.}
 
 \item{shrink_var}{apply empirical-Bayes variance moderation.}
 
-\item{var_method}{method passed to ``moderate_variance()``.}
+\item{var_method}{method passed to \code{moderate_variance()}.}
 }
 \value{
-list with ``beta``, ``se``, ``z`` (one per probe), ``df``,
-  ``n_subjects`` and ``n_samples``.
+list with \code{beta}, \code{se}, \code{z} (one per probe), \code{df},
+\code{n_subjects} and \code{n_samples}.
 }
 \description{
 Fits the exposure effect within subject for every probe at once, eliminating
@@ -46,8 +46,8 @@ M         probes x samples matrix of M-values
 exposure  length-samples exposure
 subject   length-samples subject identifier
 covars    samples x k TIME-VARYING covariates only; the within transform
-          removes time-invariant ones exactly and including them makes the
-          design rank-deficient.
+removes time-invariant ones exactly and including them makes the
+design rank-deficient.
 
 Subject intercepts are eliminated by demeaning rather than estimated, which
 is what makes the permutation and subsampling loops affordable.

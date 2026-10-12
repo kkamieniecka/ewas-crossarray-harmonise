@@ -9,14 +9,14 @@ moderate_variance(s2, df, method = c("limma", "mom"))
 \arguments{
 \item{s2}{numeric vector of per-probe residual variances.}
 
-\item{df}{residual degrees of freedom of the fit that produced ``s2``
+\item{df}{residual degrees of freedom of the fit that produced \code{s2}
 (scalar).}
 
-\item{method}{``"limma"`` for limma::squeezeVar (default, preferred in R),
-``"mom"`` for the method-of-moments fit ported from the Python reference.}
+\item{method}{\code{"limma"} for limma::squeezeVar (default, preferred in R),
+\code{"mom"} for the method-of-moments fit ported from the Python reference.}
 }
 \value{
-numeric vector of shrunken variances, same length as ``s2``.
+numeric vector of shrunken variances, same length as \code{s2}.
 }
 \description{
 Shrinks per-probe residual variances towards a fitted prior, which is what
@@ -31,9 +31,9 @@ Empirical-Bayes shrinkage of per-probe residual variance.
 
 method = "mom"   : the method-of-moments fit ported from ewasml.py
 method = "limma" : limma::squeezeVar, i.e. the reference implementation of
-                   the same model. Preferred in R -- it is maintained,
-                   handles the degenerate cases, and this repository already
-                   depends on limma at stage 02.
+the same model. Preferred in R -- it is maintained,
+handles the degenerate cases, and this repository already
+depends on limma at stage 02.
 }
 \examples{
 set.seed(1)

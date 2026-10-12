@@ -7,28 +7,26 @@
 probe_coords(object)
 }
 \arguments{
-\item{object}{A `SummarizedExperiment` or `RangedSummarizedExperiment`.}
+\item{object}{A \code{SummarizedExperiment} or \code{RangedSummarizedExperiment}.}
 }
 \value{
-A list with `chrom` (character) and `pos` (integer).
+A list with \code{chrom} (character) and \code{pos} (integer).
 }
 \description{
-Reads probe coordinates from `rowRanges()` when the object has them and
-from `rowData()` otherwise, and returns them in the form
-[comethylation_clusters()] and [call_regions()] take.
+Reads probe coordinates from \code{rowRanges()} when the object has them and
+from \code{rowData()} otherwise, and returns them in the form
+\code{\link[=comethylation_clusters]{comethylation_clusters()}} and \code{\link[=call_regions]{call_regions()}} take.
 }
 \details{
 Coordinates come back in the object's own row order, unsorted: the region
 caller treats adjacent rows as adjacent probes, so ordering is the caller's
-decision and [sort_probes()] is how to make it. `rowData()` is searched for
-a chromosome column named `chr`, `chrom` or `seqnames` and a position
-column named `pos`, `position` or `start`, case-insensitively.
+decision and \code{\link[=sort_probes]{sort_probes()}} is how to make it. \code{rowData()} is searched for
+a chromosome column named \code{chr}, \code{chrom} or \code{seqnames} and a position
+column named \code{pos}, \code{position} or \code{start}, case-insensitively.
 }
 \examples{
-if (requireNamespace("SummarizedExperiment", quietly = TRUE)) {
-  se <- SummarizedExperiment::SummarizedExperiment(
-    assays = list(M = matrix(0, nrow = 3, ncol = 2)),
-    rowData = data.frame(chr = "chr1", pos = c(10L, 20L, 30L)))
-  probe_coords(se)
-}
+se <- SummarizedExperiment::SummarizedExperiment(
+  assays = list(M = matrix(0, nrow = 3, ncol = 2)),
+  rowData = data.frame(chr = "chr1", pos = c(10L, 20L, 30L)))
+probe_coords(se)
 }

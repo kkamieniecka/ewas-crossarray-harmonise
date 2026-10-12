@@ -53,9 +53,8 @@ fnv1a <- function(s) {
 #'   independent split.
 #' @return list of character vectors, one per non-empty fold, holding subject
 #'   ids.
-#' @examples
-#' fold_assign(sprintf("S%02d", 1:10), n_folds = 3)
-#' @export
+#' @keywords internal
+#' @noRd
 fold_assign <- function(subject, n_folds, seed = 0) {
   uniq <- sort(unique(as.character(subject)))
   hv <- vapply(uniq, function(s) fnv1a(paste0(seed, ":", s)), numeric(1))
@@ -89,10 +88,8 @@ fold_assign <- function(subject, n_folds, seed = 0) {
 #' @param subject subject identifier, one per sample.
 #' @param covars optional samples x k matrix of time-varying covariates.
 #' @return integer scalar; 0 if the exposure is not identified within subject.
-#' @examples
-#' within_df(exposure = c(0, 1, 0, 1), subject = c("A", "A", "B", "B"))
-#' within_df(exposure = c(0, 0, 1, 1), subject = c("A", "A", "B", "B"))
-#' @export
+#' @keywords internal
+#' @noRd
 within_df <- function(exposure, subject, covars = NULL) {
   X <- matrix(as.double(exposure), ncol = 1)
   if (!is.null(covars) && length(covars)) X <- cbind(X, as.matrix(covars))

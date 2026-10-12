@@ -7,33 +7,31 @@
 as_granges(x)
 }
 \arguments{
-\item{x}{The list or table from [call_regions()], or the table from
-[call_blocks()].}
+\item{x}{The list or table from \code{\link[=call_regions]{call_regions()}}, or the table from
+\code{\link[=call_blocks]{call_blocks()}}.}
 }
 \value{
-A `GRanges` with one range per called region or block.
+A \code{GRanges} with one range per called region or block.
 }
 \description{
-Converts the table returned by [call_regions()] or [call_blocks()] into a
-[GenomicRanges::GRanges], with every remaining column as metadata.
+Converts the table returned by \code{\link[=call_regions]{call_regions()}} or \code{\link[=call_blocks]{call_blocks()}} into a
+\link[GenomicRanges:GRanges]{GenomicRanges::GRanges}, with every remaining column as metadata.
 }
 \details{
-Given the whole list from [call_regions()], the elements beside `table` —
-`max_abs_z` — are kept in the object's `metadata()` rather than dropped,
+Given the whole list from \code{\link[=call_regions]{call_regions()}}, the elements beside \code{table} —
+\code{max_abs_z} — are kept in the object's \code{metadata()} rather than dropped,
 since that value is the one a permutation null is compared against. The
-table's `width` column is dropped: `GRanges` computes it, and `width` is
+table's \code{width} column is dropped: \code{GRanges} computes it, and \code{width} is
 not a permitted metadata name.
 
 Coordinates pass through unchanged. Both callers report the first and last
-probe or cluster position, 1-based and inclusive, which is what `GRanges`
-means by `start` and `end`.
+probe or cluster position, 1-based and inclusive, which is what \code{GRanges}
+means by \code{start} and \code{end}.
 }
 \examples{
-if (requireNamespace("GenomicRanges", quietly = TRUE)) {
-  tab <- data.frame(chr = "chr1", start = 100L, end = 400L, width = 301L,
-                    n_probes = 4L, effect_M = 0.3, se = 0.02, z = 15,
-                    p_pointwise = 1e-50, theta = 0.3,
-                    probe_start = 0L, probe_end = 3L)
-  as_granges(list(table = tab, max_abs_z = 15))
-}
+tab <- data.frame(chr = "chr1", start = 100L, end = 400L, width = 301L,
+                  n_probes = 4L, effect_M = 0.3, se = 0.02, z = 15,
+                  p_pointwise = 1e-50, theta = 0.3,
+                  probe_start = 0L, probe_end = 3L)
+as_granges(list(table = tab, max_abs_z = 15))
 }

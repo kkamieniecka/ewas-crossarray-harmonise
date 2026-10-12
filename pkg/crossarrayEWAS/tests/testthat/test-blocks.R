@@ -59,8 +59,8 @@ test_that("mislabelling the neutral column changes block directions", {
 })
 
 test_that("state labels stay unambiguous when the pinned state is at an end", {
-  expect_identical(state_labels(2), c("hypo", "neutral", "hyper"))
-  lab <- state_labels(1)
+  expect_identical(crossarrayEWAS:::state_labels(2), c("hypo", "neutral", "hyper"))
+  lab <- crossarrayEWAS:::state_labels(1)
   expect_length(lab, 3L)
   expect_identical(lab[1], "neutral")
   expect_identical(length(unique(lab)), 3L)

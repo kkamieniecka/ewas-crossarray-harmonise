@@ -109,9 +109,6 @@ moderate_variance <- function(s2, df, method = c("limma", "mom")) {
   if (sum(ok) < 100) return(s2)
 
   if (method == "limma") {
-    if (!requireNamespace("limma", quietly = TRUE))
-      stop("moderate_variance(method='limma') needs limma; ",
-           "install it or pass method='mom'")
     out <- s2
     out[ok] <- limma::squeezeVar(s2[ok], df = df)$var.post
     return(out)
