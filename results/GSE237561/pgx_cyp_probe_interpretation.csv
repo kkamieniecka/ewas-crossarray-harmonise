@@ -1,0 +1,6 @@
+probe,gene,position,group_definition,gap_boundary,group_samples,group_subjects,group_visits,subjects_straddling,group_chips,chips_total,top_chip_share,group_450K,group_EPIC,p_platform_fisher,r2_chip,r2_subject,r2_platform,documented_variant,maf,expected_carrier_subjects,p_hwe_binom,class_split_0p25_0p75,class_subjects_straddling,p_chip_perm
+cg09199330,CYP27C1,chr2:127963503,gap>0.15,0.774,3,1,CLZ1022: 3 of 3,0,1,14,1.0,0,3,0.0184,0.931,0.974,0.068,none,,,,mid:3 / high:123,0,2e-05
+cg10985347,CYP27C1,chr2:127963512,gap>0.15,0.717,3,1,CLZ1022: 3 of 3,0,1,14,1.0,0,3,0.0184,0.954,0.974,0.346,none,,,,mid:3 / high:123,0,4e-05
+cg07512206,CYP4F8,chr19:15725989,gap>0.15,0.519,4,1,0010: 4 of 4,0,1,14,1.0,4,0,0.5734,0.313,0.922,0.0,none,,,,mid:61 / high:65,13,0.00328
+cg14711976,CYP4F12,chr19:15783239,gap>0.15,0.532,4,1,0042: 4 of 4,0,2,14,0.75,4,0,0.5734,0.223,0.891,0.005,none,,,,mid:117 / high:9,5,0.05712
+cg08561071,CYP2F1,chr19:41627236,gap>0.15,0.5,5,2,0044: 2 of 2; 0048: 3 of 4,1,2,14,0.6,5,0,0.3225,0.146,0.876,0.027,rs113512828,0.016453,1.24,0.3532437430497397,low:100 / mid:26,9,0.02858

@@ -36,3 +36,8 @@ crossarrayEWAS_*.tar.gz
 *.Rcheck/
 *.BiocCheck/
 check-out/
+
+# figure inputs that regenerate from the manifests in under a minute
+figures/probes_*.csv
+figures/gaps.npz
+figures/*.tiff

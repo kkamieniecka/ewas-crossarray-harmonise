@@ -1,0 +1,10 @@
+layout,scenario,n,flagged,invariant,freq_consistent,chip_separable,all_four
+observed,"true variant, MAF 0.10",150,100.0,100.0,97.3,8.7,8.7
+observed,"true variant, MAF 0.20",150,100.0,100.0,98.7,9.3,9.3
+observed,"true variant, MAF 0.30",150,100.0,100.0,99.3,5.3,5.3
+subjects spread across chips,"true variant, MAF 0.10",150,100.0,100.0,99.3,96.7,96.0
+subjects spread across chips,"true variant, MAF 0.20",150,100.0,100.0,98.7,95.3,94.7
+subjects spread across chips,"true variant, MAF 0.30",150,100.0,100.0,99.3,99.3,98.7
+observed,no signal,150,0.0,,,,0.0
+observed,"chip artefact, one chip shifted 0.3",150,7.3,63.6,100.0,0.0,0.0
+observed,"subject artefact, one subject shifted 0.3",150,34.0,94.1,100.0,7.8,2.0

@@ -29,6 +29,10 @@ measured rather than asserted.
 | [`docs/installation.md`](docs/installation.md) | containers, conda, and the Apple Silicon route |
 | [`docs/parameters.md`](docs/parameters.md) | every parameter, with the default that actually runs |
 | [`docs/results-GSE237561.md`](docs/results-GSE237561.md) | validation run: 126 arrays, 38 subjects, two cohorts across both array generations |
+| [`docs/figure1-report.md`](docs/figure1-report.md) | the probe-spacing baseline, the exact clustering call, and where each published figure comes from |
+| [`docs/figure1-legend.md`](docs/figure1-legend.md) | Figure 1 legend and alt-text description |
+| [`docs/star-allele-coverage.md`](docs/star-allele-coverage.md) | why no star allele is callable, measured against the shared panel rather than argued |
+| [`docs/stage07-group-definition.md`](docs/stage07-group-definition.md) | what the gap partition is, and why it is not the beta-threshold classes |
 | [`CHANGELOG.md`](CHANGELOG.md) | version history and known limitations |
 
 ## The design constraint that drives everything
@@ -178,6 +182,7 @@ ewas-crossarray-harmonise/
 │                                 (published separately, see below)
 ├── conf/                         conda specs + source-install script
 ├── docs/                         methods, rationale, parameters, results
+├── figures/                      manuscript figure scripts (read results, never rerun a stage)
 ├── results/GSE237561/            validation tables, run records, logs
 └── data/sample_sheets/           the validation run's sample sheet
 ```

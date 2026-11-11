@@ -1,0 +1,5 @@
+set,n_probes,median_gap_bp,iqr_lo,iqr_hi,pct_gaps_gt_maxgap,n_clusters,pct_single_probe_clusters
+native 450K,456741,307.0,80.0,2471.0,50.35,229977,70.07
+native EPIC,816578,514.0,108.0,2517.0,58.64,478852,75.42
+"shared (both manifests, same filters)",425939,342.0,86.0,2687.0,52.2,222351,70.44
+"analysed panel (422,898, run output)",422898,343.0,87.0,2696.0,52.23,220883,70.4

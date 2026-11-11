@@ -1,0 +1,24 @@
+{
+ "spacing_acceptance": {
+  "335 bp": "shared manifest, autosomes, SNP probes RETAINED (443,483 probes)",
+  "342 bp": "shared manifest, autosomes, SNP-at-CpG/SBE removed (425,939 probes)",
+  "343 bp": "analysed panel as run, 422,898 probes (the set carrying the 220,883 clusters)"
+ },
+ "cluster_call": "clusterMaker(chr = ann$chr_s, pos = ann$pos, maxGap = 300)  # bin/03_baseline_bumphunter.R:80, default --max-gap 300L",
+ "bumphunter_call": "bumphunter(M, design = design, chr = ann$chr_s, pos = ann$pos, cluster = cl, coef = 2, cutoff = 0.10, B = 200, smooth = TRUE, smoothFunction = loessByCluster, nullMethod = \"permutation\")",
+ "clusters_220883": "clusterMaker(maxGap=300) on 422,898 autosomal probes, median 1 probe/cluster (results/baseline.log)",
+ "clusters_24552": "co-methylation clustering in stage 04 (max_gap=1000, rho_min=0.3, decay_bp=1000): 24,552 clusters covering 56,623 of 422,898 probes (13.4%) (results/dmr.log)",
+ "panelD_reproduced": {
+  "bumphunter": {
+   "n": 214,
+   "r": 0.3973387175186966,
+   "sign": 0.7289719626168224
+  },
+  "distance-aware segmentation": {
+   "n": 207,
+   "r": 0.38797234063335195,
+   "sign": 0.821256038647343
+  }
+ },
+ "blockfinder_median_1bp": "202,407 collapsed units have median width 1 bp; the 4 called blocks have median width 2,460.75 bp (results/baseline.log)"
+}

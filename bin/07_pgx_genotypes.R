@@ -65,8 +65,21 @@ opt <- parse_args(OptionParser(option_list = list(
   make_option("--gap-threshold", type = "double", default = 0.15,
               help = "minimum beta gap for gaphunter"),
   make_option("--gap-outcutoff", type = "double", default = 0.01,
-              help = "gaphunter outlier cutoff, as a fraction of samples")
+              help = "gaphunter outlier cutoff, as a fraction of samples"),
+  make_option("--group-definition", type = "character", default = "gap",
+              help = paste("how samples are partitioned at a gapped probe:",
+                           "'gap' (the partition gaphunter returns) or 'class'",
+                           "(the --het-lo/--het-hi beta thresholds). 'class' is",
+                           "retained only for comparison with earlier runs")),
+  make_option("--chip-col", type = "character", default = "Sentrix_ID",
+              help = "sample-sheet column identifying the BeadChip"),
+  make_option("--n-perm",   type = "integer", default = 5000,
+              help = "permutations for the group-by-chip association test"),
+  make_option("--seed",     type = "integer", default = 1)
 )), convert_hyphens_to_underscores = TRUE)
+
+stopifnot(opt$group_definition %in% c("gap", "class"))
+set.seed(opt$seed)
 
 dir.create(opt$out_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -142,20 +155,109 @@ vp <- data.frame(probe = hit, chr = a$chr, pos = a$pos,
                  stringsAsFactors = FALSE)
 vp <- vp[order(!vp$documented_snp, vp$chr, vp$pos), ]
 
-## Per-sample calls at the gapped probes. The labels are the beta classes the
-## gap defines, not reference/alternate alleles: the array reads an allelic
-## ratio whose direction depends on probe design, so these are genotype
-## CLASSES, and which class is the minor homozygote follows from its frequency.
+## ------------------------------------ 3. group membership at the gapped probes
+## Two partitions exist at a gapped probe and they are NOT interchangeable.
+##   gap   - the partition gaphunter itself returns: samples separated by a beta
+##           gap wider than --gap-threshold. This is the only partition that
+##           corresponds to the detection step, and it is the default.
+##   class - the --het-lo/--het-hi boundaries used to call identity-probe
+##           genotypes. Applied to a CpG probe, a fixed boundary can cut through
+##           a unimodal distribution and manufacture two classes where the data
+##           contain no gap, so it is written out for comparison only and is
+##           never the basis of the interpretation unless asked for explicitly.
+## Both partitions are written to disk; --group-definition selects the one the
+## interpretation table is computed on, and the choice is recorded in the run
+## summary so a reader never has to infer which was used.
+
+gap_partition <- function(b, threshold) {
+  o <- order(b)
+  g <- cumsum(c(TRUE, diff(b[o]) > threshold))
+  out <- integer(length(b)); out[o] <- g; names(out) <- names(b); out
+}
+r2_of <- function(b, f) 1 - sum((b - ave(b, factor(f)))^2) / sum((b - mean(b))^2)
+perm_chip_p <- function(minor, chip, n_perm) {
+  obs <- suppressWarnings(chisq.test(table(minor, chip))$statistic)
+  hits <- replicate(n_perm, {
+    p <- sample(minor)
+    if (length(unique(p)) < 2) return(FALSE)
+    suppressWarnings(chisq.test(table(p, chip))$statistic) >= obs
+  })
+  (sum(hits) + 1) / (n_perm + 1)
+}
+
 cls <- t(apply(bet[hit, , drop = FALSE], 1, function(b)
   ifelse(b < opt$het_lo, "class_low", ifelse(b > opt$het_hi, "class_high", "class_mid"))))
 colnames(cls) <- colnames(bet)
+
+gap_grp <- t(apply(bet[hit, , drop = FALSE], 1, gap_partition,
+                   threshold = opt$gap_threshold))
+colnames(gap_grp) <- colnames(bet)
+if (!is.null(gh$sampleresults)) {
+  sr <- as.matrix(gh$sampleresults)[hit, colnames(bet), drop = FALSE]
+  same <- mean(vapply(seq_len(nrow(sr)), function(i)
+    length(unique(paste(sr[i, ], gap_grp[i, ]))) == length(unique(gap_grp[i, ])),
+    logical(1)))
+  log_msg("gap partition matches gaphunter sample results on ",
+          round(100 * same), "% of gapped probes")
+  gap_grp <- sr
+}
+
+subj   <- ss[[opt$subject]][match(colnames(bet), ss$Sample_Name)]
+chip   <- ss[[opt$chip_col]][match(colnames(bet), ss$Sample_Name)]
+arr    <- ss[[opt$array_col]][match(colnames(bet), ss$Sample_Name)]
+n_subj <- length(unique(subj))
+
+## Allele-frequency expectations are computed on independent SUBJECTS, not on
+## samples: repeated visits of one person carry one genotype, so a sample-level
+## expectation overstates the evidence in a longitudinal cohort.
+interp <- do.call(rbind, lapply(hit, function(p) {
+  b     <- bet[p, ]
+  part  <- if (opt$group_definition == "gap") gap_grp[p, ] else cls[p, ]
+  minor <- part == names(sort(table(part)))[1]
+  gsub  <- unique(subj[minor])
+  visits <- vapply(gsub, function(s)
+    sprintf("%s: %d of %d", s, sum(minor & subj == s), sum(subj == s)), character(1))
+  maf  <- suppressWarnings(as.numeric(vp$Probe_maf[vp$probe == p]))
+  pcar <- if (length(maf) == 1 && !is.na(maf)) 2 * maf - maf^2 else NA_real_
+  data.frame(
+    probe = p, gene = vp$gene[vp$probe == p],
+    group_definition = opt$group_definition,
+    group_samples = sum(minor), group_subjects = length(gsub),
+    group_visits = paste(visits, collapse = "; "),
+    subjects_straddling = sum(vapply(gsub, function(s)
+      sum(minor & subj == s) < sum(subj == s), logical(1))),
+    group_chips = length(unique(chip[minor])),
+    chips_total = length(unique(chip)),
+    top_chip_share = round(max(table(chip[minor])) / sum(minor), 3),
+    p_chip_perm = round(perm_chip_p(minor, chip, opt$n_perm), 4),
+    p_platform_fisher = round(fisher.test(
+      table(factor(minor, c(FALSE, TRUE)), arr))$p.value, 4),
+    r2_chip = round(r2_of(b, chip), 3),
+    r2_subject = round(r2_of(b, subj), 3),
+    r2_platform = round(r2_of(b, arr), 3),
+    maf = if (length(maf) == 1) maf else NA_real_,
+    expected_carrier_subjects = if (!is.na(pcar)) round(n_subj * pcar, 2) else NA_real_,
+    p_hwe_binom = if (!is.na(pcar)) signif(
+      pbinom(length(gsub) - 1, n_subj, pcar, lower.tail = FALSE), 3) else NA_real_,
+    class_split = paste(sprintf("%s:%d", names(table(cls[p, ])),
+                                as.integer(table(cls[p, ]))), collapse = " / "),
+    stringsAsFactors = FALSE)
+}))
+log_msg("groups confined to one subject: ", sum(interp$group_subjects == 1),
+        " of ", nrow(interp), "; to two chips or fewer: ",
+        sum(interp$group_chips <= 2))
 
 write.csv(data.frame(probe = rownames(rs_geno), rs_geno, check.names = FALSE),
           file.path(opt$out_dir, "pgx_rs_genotypes.csv"), row.names = FALSE)
 write.csv(conc, file.path(opt$out_dir, "pgx_identity_concordance.csv"), row.names = FALSE)
 write.csv(vp, file.path(opt$out_dir, "pgx_cyp_variant_probes.csv"), row.names = FALSE)
+## class labels, kept for comparison; these are NOT group membership
 write.csv(data.frame(probe = rownames(cls), cls, check.names = FALSE),
           file.path(opt$out_dir, "pgx_cyp_genotypes.csv"), row.names = FALSE)
+write.csv(data.frame(probe = rownames(gap_grp), gap_grp, check.names = FALSE),
+          file.path(opt$out_dir, "pgx_cyp_groups.csv"), row.names = FALSE)
+write.csv(interp, file.path(opt$out_dir, "pgx_cyp_probe_interpretation.csv"),
+          row.names = FALSE)
 bh <- as.data.frame(bet[hit, , drop = FALSE])
 write.csv(data.frame(probe = rownames(bh), bh, check.names = FALSE),
           file.path(opt$out_dir, "pgx_cyp_beta.csv"), row.names = FALSE)
@@ -176,6 +278,11 @@ summary_json <- list(
     n_pairs_cross_array_same_subject = sum(conc$same_subject & conc$cross_array)),
   gene_pattern = opt$genes,
   probes_in_genes = sum(sel),
+  group_definition = opt$group_definition,
+  gap_threshold = opt$gap_threshold,
+  het_lo = opt$het_lo, het_hi = opt$het_hi,
+  groups_confined_to_one_subject = sum(interp$group_subjects == 1),
+  groups_within_two_chips = sum(interp$group_chips <= 2),
   gapped_probes = length(hit),
   gapped_with_documented_snp = sum(documented),
   genes_with_gapped_probes = sort(unique(unlist(strsplit(vp$gene, ";")))),

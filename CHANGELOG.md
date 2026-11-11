@@ -4,6 +4,58 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## Manuscript figures and the probe-spacing baseline
+
+- `figures/01_probe_sets.R` and `figures/02_figure1.py` build Figure 1 of the
+  applications note from the recorded run: the workflow, the probe-spacing
+  distributions of both native designs against the analysed panel, probes per
+  called region, and cross-array agreement under a shared estimator. Both read
+  result tables only and rerun no stage.
+- `results/GSE237561/spacing_baseline.csv`: probe count, median gap, IQR,
+  fraction of gaps above the 300 bp clustering threshold, cluster count and
+  single-probe fraction, for native 450K (456,741 probes, median 307 bp), native
+  EPIC (816,578, 514 bp), the shared manifest (425,939, 342 bp) and the analysed
+  panel (422,898, 343 bp). All four carry the same two filters: autosomes, and
+  loci dropped by `dropLociWithSnps(snps = c("SBE", "CpG"), maf = 0.01)`.
+- `docs/figure1-report.md` records three things the run's own logs establish and
+  the draft had wrong. The published median gap of 335 bp is measured on the
+  shared manifest **before** SNP filtering (443,483 probes), while the 220,883
+  clusters it is quoted beside come from the filtered 422,898-probe panel, whose
+  median gap is 343 bp. The "median width 1 bp" attributed to the blockFinder
+  path describes its 202,407 collapsed units, not the four called blocks (median
+  2,460.75 bp). And cross-reactive filtering was never active in the recorded
+  run, because `bin/01_harmonise.R` applies that list only when
+  `EWAS_CROSSREACTIVE` names a file.
+- Cross-array agreement in Figure 1D is computed as `bin/06_compare.py` does,
+  by re-estimating each region's per-array effect from the same within-subject
+  per-probe fits: r = 0.397 with 72.9% sign concordance over 214 bumphunter
+  regions, r = 0.388 with 82.1% over 207 segmentation regions. The `effect_450K`
+  and `effect_EPIC` columns stored in the region tables are each method's own
+  per-array refit and are not comparable between methods.
+
+## Stage 07 — group definition and what the panel cannot call
+
+- `bin/07_pgx_genotypes.R` now states in code which partition the interpretation
+  is computed on. `--group-definition` selects `gap` (the partition the detector
+  returns) or `class` (the `--het-lo` / `--het-hi` beta thresholds, kept only for
+  comparison with earlier runs), `--chip-col`, `--n-perm` and `--seed` control
+  the group-by-chip permutation test, and both partitions are written out. The
+  interpretation table gained the confounding, invariance and allele-frequency
+  columns.
+- `results/GSE237561/star_allele_probe_coverage.csv` and
+  `identity_probe_positions.csv` replace an argument with a measurement: of 32
+  defining variants for the commonly reported alleles of the seven
+  CPIC-actionable CYP genes, none coincides with the interrogated CpG of any
+  shared probe, the median distance to the nearest shared probe is 3,118 bp, and
+  18 of the 32 have no shared probe within 1 kb. All 59 shared identity probes
+  were placed from dbSNP; none lies in any of the seven gene windows.
+- `tests/validate_audit.py` simulates the audit's detection criteria on the
+  cohort's own design, and `results/GSE237561/audit_validation_simulation.csv`
+  carries the result: the criteria accept a true variant in 5 to 9% of
+  replicates under the observed chip layout and in 95 to 99% when subjects are
+  spread across chips, so the null at the five CYP probes is a limit of the
+  design rather than a failure of the procedure.
+
 ## Stage 07 — pharmacogenomic genotyping from array probes
 
 - `bin/07_pgx_genotypes.R`: calls the Infinium rs identity probes and screens

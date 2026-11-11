@@ -1,0 +1,16 @@
+{
+ "cohort": "GSE237561",
+ "samples": 126,
+ "subjects": 38,
+ "chips": 14,
+ "group_definition": "gap",
+ "gap_threshold": 0.15,
+ "outlier_cutoff": 0.01,
+ "het_lo": 0.25,
+ "het_hi": 0.75,
+ "note": "Group membership is defined by the beta-value gap. The 0.25/0.75 thresholds are used only to call identity-probe genotypes and are reported for CYP probes as class_split_* for comparison, never as group membership.",
+ "gapped_probes": 5,
+ "probes_with_documented_variant": 1,
+ "groups_confined_to_one_subject": 4,
+ "groups_confined_to_two_chips_or_fewer": 5
+}
