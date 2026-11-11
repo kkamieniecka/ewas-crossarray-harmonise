@@ -9,19 +9,21 @@ the probes the two designs share, and are analysed under a within-subject model
 before region detection. (**B**) Distance to the neighbouring probe within a
 chromosome, for the two native designs and for the analysed shared panel
 (422,898 probes); the vertical line marks the 300 bp threshold at which
-`clusterMaker` starts a new cluster. Median gaps are 307 bp on native 450K,
-514 bp on native EPIC and 343 bp on the shared panel; 52.2% of shared-panel
-gaps exceed the threshold, and 70.4% of the resulting 220,883 clusters contain
-a single probe. Probe sets are filtered identically: autosomes only, loci with
+`clusterMaker` starts a new cluster. Gaps below 10 bp are pooled into a single
+wide bin, whose height is divided by that width as for every other bin. Median
+gaps are 307 bp on native 450K, 514 bp on native EPIC and 343 bp on the shared
+panel; 52.2% of shared-panel gaps exceed the threshold, and 70.4% of the
+resulting 220,883 clusters contain a single probe. Probe sets are filtered identically: autosomes only, loci with
 a SNP at the CpG or single-base-extension position at minor allele frequency
 0.01 or above removed. (**C**) Probes per called region. bumphunter returns 157
-single-probe regions of 214; distance-aware segmentation returns none, its
-smallest unit being three probes by construction. (**D**) Region effect
-estimated separately in the 450K and EPIC cohorts, one point per region. Both
-axes use the same within-subject per-probe fits, aggregated over each region by
+single-probe regions of 214; distance-aware segmentation returns none, because
+its minimum region size is three probes (`--min-probes 3`, with
+`--min-effect 0.05`), as the key records. (**D**) Region effect estimated
+separately in the 450K and EPIC cohorts, one point per region. Both axes use the
+same within-subject per-probe fits, aggregated over each region by
 inverse-variance weighting, so the only difference between the two scatters is
-which units the method selected. Pearson correlation and the proportion of
-regions agreeing in direction are printed in each. Effects are on the M-value
+which units the method selected. Pearson correlation, the number of regions and
+the proportion agreeing in direction are given above each scatter. Effects are on the M-value
 scale per 100 days of exposure. No region reached family-wise significance in
 either method.
 
@@ -40,18 +42,21 @@ with a peak near 100 base pairs and a second broader peak between 1 and 10
 kilobases; the EPIC curve sits lower at the first peak and higher between 1 and
 10 kilobases, indicating wider spacing. A vertical line at 300 base pairs marks
 the clustering threshold and falls between the two peaks, so roughly half of all
-gaps lie on either side of it. Panel C is a grouped bar chart of the number of
+gaps lie on either side of it. Gaps shorter than 10 base pairs are pooled into
+one wide bin at the left, which reads as a low flat shelf. Panel C is a grouped bar chart of the number of
 regions by probe count, with categories one, two, three, four and five or more.
 bumphunter, in orange, is concentrated at one probe with about 157 regions and
 declines steeply. Distance-aware segmentation, in blue with diagonal hatching,
 has nothing at one or two probes, about 141 regions at three probes, 45 at four
 and 21 at five or more. Panel D is a pair of scatter plots of the EPIC effect
 against the 450K effect for each region, with reference lines at zero on both
-axes and equal scales from minus 0.4 to plus 0.4. The left plot, bumphunter in
-orange circles, shows 214 regions in a diffuse cloud with correlation 0.397 and
-72.9 per cent agreeing in direction. The right plot, distance-aware segmentation
-in blue triangles, shows 207 regions in a tighter cloud with correlation 0.388
-and 82.1 per cent agreeing in direction.
+axes and equal scales from minus 0.4 to plus 0.4; each carries its statistics as
+a heading above the plotting area rather than inside it. The left plot,
+bumphunter in orange circles, shows 214 regions in a diffuse cloud with
+correlation 0.397 and 72.9 per cent agreeing in direction. The right plot,
+distance-aware segmentation in blue triangles, shows 207 regions in a tighter
+cloud with correlation 0.388 and 82.1 per cent agreeing in direction. Panels C
+and D share a baseline and height.
 
 ## Specification check
 

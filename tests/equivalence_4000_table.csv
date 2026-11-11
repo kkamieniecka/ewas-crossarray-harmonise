@@ -1,0 +1,6 @@
+quantity,measure,max_difference,worst_component,tolerance,n_checks,all_within_tolerance
+Probe-level effect estimates,max |difference|,2.22e-16,fit_within [raw] beta,1e-11,2,True
+Standard errors,max |difference|,8.728e-16,moderate_variance [mom vs python],1e-10,3,True
+Cluster assignments,mismatching probes,0.0,comethylation_clusters ids,0,1,True
+Segment boundaries,mismatching breakpoints,0.0,tv_denoise breakpoints,0,1,True
+Region-level statistics,max |difference|,1.885e-14,call_regions p_pointwise,1e-09,6,True

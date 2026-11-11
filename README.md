@@ -33,6 +33,8 @@ measured rather than asserted.
 | [`docs/figure1-legend.md`](docs/figure1-legend.md) | Figure 1 legend and alt-text description |
 | [`docs/star-allele-coverage.md`](docs/star-allele-coverage.md) | why no star allele is callable, measured against the shared panel rather than argued |
 | [`docs/stage07-group-definition.md`](docs/stage07-group-definition.md) | what the gap partition is, and why it is not the beta-threshold classes |
+| [`docs/equivalence-4000-probes.md`](docs/equivalence-4000-probes.md) | the R and Python cores compared on the seeded fixture, and what that does and does not establish |
+| [`docs/regenerating-harmonised-matrix.md`](docs/regenerating-harmonised-matrix.md) | rebuilding `harmonised.rds` from the IDATs: recorded parameters, requirements, measured timings |
 | [`CHANGELOG.md`](CHANGELOG.md) | version history and known limitations |
 
 ## The design constraint that drives everything

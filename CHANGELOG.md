@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## Cross-language equivalence, and Figure 1 revised
+
+- `docs/equivalence-4000-probes.md`, `tests/equivalence_4000_table.csv` and
+  `tests/equivalence_4000_run.txt`: `bin/ewasml.R` against `bin/ewasml.py` on
+  the seeded fixture `tests/gen_equivalence_fixtures.py` writes (4,000 probes,
+  39 samples, 12 subjects, seed 20240607). Fifty-five checks, none failed.
+  Largest absolute differences: probe-level effects 2.22e-16, standard errors
+  8.73e-16, region-level statistics 1.885e-14; cluster assignments and segment
+  boundaries agree exactly (0 mismatches over 181 clusters and 169 segments).
+  The fixture is pseudo-random rather than methylation data, so this bounds the
+  port and not the estimator.
+- Figure 1 revised: panel D statistics moved above each scatter so no text sits
+  over points, panels C and D given the same height and baseline, panel B's
+  sub-10 bp gaps pooled into one wide bin, and the segmentation minimum region
+  size (`--min-probes 3`, with `--min-effect 0.05` as recorded in
+  `results/GSE237561/run_config.json`) added to the panel C key.
+- `docs/regenerating-harmonised-matrix.md`: what a rebuild of `harmonised.rds`
+  from the IDATs needs, with every recorded stage 01 parameter and the measured
+  timings — 5 min 34 s for stage 01 on 126 arrays, peak vector memory 10.4 GB.
+  It also records that the run normalised with `preprocessNoob` per array type
+  and `--bmiq FALSE`, which any text describing quantile normalisation
+  contradicts.
+
 ## Manuscript figures and the probe-spacing baseline
 
 - `figures/01_probe_sets.R` and `figures/02_figure1.py` build Figure 1 of the

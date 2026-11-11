@@ -1,0 +1,67 @@
+fixture: 4000 probes x 39 samples, 12 subjects
+read_f64 dimensions                            ok    max diff 0           (tol 0) [4000 x 39]
+fit_within [raw] beta                          ok    max diff 2.22e-16    (tol 1e-11) 
+fit_within [raw] se                            ok    max diff 8.327e-17   (tol 1e-11) 
+fit_within [raw] z                             ok    max diff 3.553e-15   (tol 1e-09) 
+fit_within [raw] df                            ok    max diff 0           (tol 0) 
+fit_within [shrunk] beta                       ok    max diff 2.22e-16    (tol 1e-11) 
+fit_within [shrunk] se                         ok    max diff 8.327e-17   (tol 1e-11) 
+fit_within [shrunk] z                          ok    max diff 4.441e-15   (tol 1e-09) 
+fit_within [shrunk] df                         ok    max diff 0           (tol 0) 
+moderate_variance [mom vs python]              ok    max diff 8.728e-16   (tol 1e-10) 
+moderate_variance [limma vs python]            --    max rel diff 2.677e-14 (informational)
+comethylation_clusters ids                     ok    max diff 0           (tol 0) [181 clusters, 3954 clustered probes]
+distance_penalty                               ok    max diff 1.421e-14   (tol 1e-12) 
+tv_denoise theta                               ok    max diff 1.665e-16   (tol 1e-08) 
+tv_denoise breakpoints                         ok    max diff 0           (tol 0) [169 segments]
+call_regions n_regions                         ok    max diff 0           (tol 0) [141 regions]
+call_regions start                             ok    max diff 0           (tol 0) 
+call_regions end                               ok    max diff 0           (tol 0) 
+call_regions n_probes                          ok    max diff 0           (tol 0) 
+call_regions probe_start                       ok    max diff 0           (tol 0) 
+call_regions probe_end                         ok    max diff 0           (tol 0) 
+call_regions chr                               ok    max diff 0           (tol 0) 
+call_regions effect_M                          ok    max diff 1.665e-16   (tol 1e-09) 
+call_regions se                                ok    max diff 2.082e-17   (tol 1e-09) 
+call_regions z                                 ok    max diff 1.066e-14   (tol 1e-09) 
+call_regions theta                             ok    max diff 1.665e-16   (tol 1e-09) 
+call_regions p_pointwise                       ok    max diff 1.885e-14   (tol 1e-09) 
+call_regions max_abs_z                         ok    max diff 1.066e-14   (tol 1e-09) 
+null max|z| over python draws                  ok    max diff 1.776e-15   (tol 1e-08) [5 replicates]
+within_subject_permutation preserves per-subject exposures ok    max diff 0           (tol 0) 
+within_subject_permutation leaves singletons fixed ok    max diff 0           (tol 0) 
+naive_permutation preserves the exposure multiset ok    max diff 0           (tol 0) 
+stability_selection subsample size             ok    max diff 0           (tol 0) [k=6 of 12 subjects]
+stability_selection samples subjects without replacement ok    max diff 0           (tol 0) 
+stability_selection frequency arithmetic       ok    max diff 0           (tol 0) 
+within_df full design                          ok    max diff 0           (tol 0) [df=23]
+within_df half of the subjects                 ok    max diff 0           (tol 0) 
+fold_assign identical splits                   ok    max diff 0           (tol 0) [k = 3,5,7]
+dist_transitions A(d)                          ok    max diff 1.11e-16    (tol 1e-15) [d = 1e+02,5e+03,2e+05,1e+06,5e+06]
+A(d) rows sum to 1                             ok    max diff 0           (tol 1e-15) 
+fit_block_hsmm iterations to convergence       ok    max diff 0           (tol 0) [11 iterations, 900 clusters, 0.1s]
+fit_block_hsmm state means                     ok    max diff 5.551e-17   (tol 1e-09) [hypo -0.3468, hyper 0.2673]
+fit_block_hsmm state sd                        ok    max diff 6.939e-18   (tol 1e-09) 
+fit_block_hsmm stationary distribution         ok    max diff 0           (tol 1e-09) 
+fit_block_hsmm log-likelihood                  ok    max diff 2.576e-16   (tol 1e-12) [882.4962]
+fit_block_hsmm posterior                       ok    max diff 3.331e-16   (tol 1e-09) 
+posterior rows sum to 1                        ok    max diff 2.22e-16    (tol 1e-12) 
+state assignment identical                     ok    max diff 0           (tol 0) [900 clusters]
+fit_block_hsmm neutral column                  ok    max diff 0           (tol 0) [R 2 == Python 1, 1- vs 0-based]
+call_blocks block count                        ok    max diff 0           (tol 0) [8 blocks]
+call_blocks boundaries and widths              ok    max diff 0           (tol 0) 
+call_blocks cluster counts, chromosome and direction ok    max diff 0           (tol 0) [3 hyper, 5 hypo]
+call_blocks block posterior                    ok    max diff 2.22e-16    (tol 1e-09) [min 0.9786]
+raising min_post cannot call more clusters into blocks ok    max diff 0           (tol 0) [109 clusters at 0.99 vs 120 at 0.80, in 11 vs 8 blocks]
+raising min_clusters cannot add blocks         ok    max diff 0           (tol 0) 
+every block lies on one chromosome             ok    max diff 0           (tol 0) 
+block posterior is the mean over its own clusters ok    max diff 0           (tol 1e-12) 
+degenerate fit state means                     ok    max diff 1.388e-17   (tol 1e-09) [0.0000, 0.1126, 0.3672]
+degenerate fit posterior                       ok    max diff 3.886e-16   (tol 1e-09) 
+pinned neutral state sorts to an end           ok    max diff 0           (tol 0) [column 1 of 3, not the middle]
+degenerate case block count                    ok    max diff 0           (tol 0) [22 blocks; assuming the middle column reports 10]
+degenerate case directions identical           ok    max diff 0           (tol 0) [hyper]
+no state is called hypo when none is below neutral ok    max diff 0           (tol 0) 
+degenerate case boundaries                     ok    max diff 0           (tol 0) 
+
+PASS: 0 check(s) failed
