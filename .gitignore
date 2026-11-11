@@ -41,3 +41,6 @@ check-out/
 figures/probes_*.csv
 figures/gaps.npz
 figures/*.tiff
+
+# scratch: regenerated test fixtures, build scratch
+.tmp/
