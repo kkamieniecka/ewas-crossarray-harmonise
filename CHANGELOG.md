@@ -4,6 +4,43 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## Matrix rebuilt from the IDATs, bumphunter across three gap values, Figure 1 matched to Table 1
+
+- The harmonised matrix was regenerated from the GEO IDATs with the recorded
+  stage 01 parameters and verified against the recorded run: row names and
+  column names identical and in order, all four `probe_filter.csv` flags
+  identical over all 452,567 probes, 0 QC failures, 0 sex mismatches.
+  `sha256(mval.f64) = 3845f277e9651ec6a9acdb9fe3ab5dc4acde5d7ce15825d5d41f99c33a620ed9`.
+  6 min 47 s, peak 10.3 GB vector memory, under minfi 1.56.0 where the original
+  used 1.52.1, with no change to the probe set or any filter decision. The
+  matrix itself is not committed; `docs/regenerating-harmonised-matrix.md` says
+  how to rebuild it.
+- `results/GSE237561/bumphunter_maxgap_sweep.csv` and the three
+  `bumphunter_regions_maxgap*.csv`: bumphunter rerun on the rebuilt matrix at
+  `--max-gap` 300, 500 and 1000 with every other setting as recorded. maxGap
+  300 reproduces the published row of `method_comparison.csv` exactly — 214
+  regions, median width 1 bp, median 1 probe, cross-array r 0.3973, sign
+  concordance 0.7290. At 500 and 1000: 337 and 532 regions, median width 1 bp
+  and median 1 probe at both. No region reached family-wise significance at any
+  value.
+- `results/GSE237561/table1_cross_array_ci.csv`: 95% intervals for cross-array
+  correlation (Fisher z) and for the proportion agreeing in direction (Wilson)
+  for the four Table 1 rows, with the counts they are computed from. The
+  bumphunter maxGap 300 interval for the correlation includes zero, on 27
+  regions.
+- Figure 1 panels C and D rebuilt to show the matched comparison: panel C is
+  region count by method and setting, split into 1-probe, 2-probe and
+  3-or-more-probe regions with the total above each bar; panel D is cross-array
+  agreement restricted to regions of three or more probes, bumphunter at maxGap
+  1000 against co-methylation segmentation, on the shared within-subject
+  estimator. Panels A and B are unchanged apart from the method name. The
+  legend and alt text in `docs/figure1-legend.md` are rewritten to match, and
+  state that co-methylation segmentation has a minimum region size of three
+  probes.
+- The method is named "co-methylation segmentation" in the figure, its legend,
+  the sweep table and `docs/rebuild-and-maxgap.md`. Older documents and the
+  pipeline sources still carry the earlier wording.
+
 ## Cross-language equivalence, and Figure 1 revised
 
 - `docs/equivalence-4000-probes.md`, `tests/equivalence_4000_table.csv` and

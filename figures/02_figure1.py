@@ -3,13 +3,15 @@
 
 Four panels, 178 mm wide, written as vector PDF and 350 dpi TIFF.
 
-Inputs, all produced by fig1/01_probe_sets.R and the inventory step, none of
-them recomputed here:
+Inputs, none of them recomputed here:
     spacing_baseline.csv            per-probe-set spacing summary
-    gaps.npz                        the gap vectors behind panel B
-    panelC_probes_per_region.csv    probes per region, both methods
-    panelD_bumphunter.csv           per-region 450K and EPIC effects,
-    panelD_distance-aware.csv       shared within-subject estimator
+    gaps.npz                        the gap vectors behind panel B, rebuilt
+                                    from the probe coordinate files if absent
+    panelC_region_size.csv          regions by probe count, one row per method
+                                    and setting, with the total
+    panelD_bumphunter_maxGap_1000.csv       per-region 450K and EPIC effects on
+    panelD_co-methylation_segmentation.csv  the shared within-subject estimator,
+                                    regions of three or more probes only
 
 Usage:  python fig1/02_figure1.py <dir>
 """
@@ -35,9 +37,13 @@ BH_M, TV_M = "o", "^"
 SET_STYLE = {"native 450K": ("#4d4d4d", (0, (4, 1.6))),
              "native EPIC": ("#9a9a9a", (0, (1.2, 1.4))),
              "shared panel": ("#111111", "solid")}
+# size classes in panel C: greyscale value plus hatch, so neither depends on hue
+SIZE_STYLE = {"1 probe": ("#dcdcdc", ""), "2 probes": ("#9c9c9c", "//"),
+              ">=3 probes": ("#4a4a4a", "xx")}
 MAXGAP = 300
 # --min-probes as recorded in results/GSE237561/run_config.json for the 207 regions
 MIN_PROBES = 3
+PANEL_D_KEYS = ["bumphunter maxGap 1000", "co-methylation segmentation"]
 
 
 def panel_a(ax):
@@ -65,7 +71,7 @@ def panel_a(ax):
                     arrowprops=arrow)
     for y0, y1 in [(0.625, 0.545), (0.415, 0.34), (0.212, 0.145)]:
         ax.annotate("", xy=(0.46, y1), xytext=(0.46, y0), arrowprops=arrow)
-    ax.text(0.46, -0.03, "bumphunter   |   distance-aware segmentation",
+    ax.text(0.46, -0.03, "bumphunter   |   co-methylation segmentation",
             ha="center", va="center", fontsize=6.2, color="#333333")
     return rd
 
@@ -98,48 +104,53 @@ def panel_b(ax, gaps, summary):
     return med
 
 
-def panel_c(ax, pc, min_probes):
+def panel_c(ax, pc):
+    """Region size by method and setting, as stacked bars.
+
+    The bar position names the method and setting, so colour here encodes the
+    size class rather than the method: a greyscale ramp, with a hatch per class
+    as well, so the three classes separate without relying on hue.
+    """
+    classes = ["1 probe", "2 probes", ">=3 probes"]
+    labels = ["1 probe", "2 probes", "3 or more probes"]
     x = np.arange(len(pc.index))
-    w = 0.38
-    ax.bar(x - w / 2, pc["bumphunter"], w, color=BH_C, edgecolor="white",
-           linewidth=0.4, label="bumphunter")
-    ax.bar(x + w / 2, pc["distance-aware segmentation"], w, color=TV_C,
-           edgecolor="white", linewidth=0.4, hatch="///",
-           label="distance-aware segmentation")
-    for xi, v in zip(x - w / 2, pc["bumphunter"]):
-        if v == 0:
-            ax.plot([xi], [0], marker="_", color=BH_C, markersize=5)
-    for xi, v in zip(x + w / 2, pc["distance-aware segmentation"]):
-        if v == 0:
-            ax.plot([xi], [0], marker="_", color=TV_C, markersize=5)
+    bottom = np.zeros(len(pc.index))
+    for cls, lab in zip(classes, labels):
+        v = pc[cls].to_numpy(float)
+        ax.bar(x, v, 0.62, bottom=bottom, color=SIZE_STYLE[cls][0],
+               hatch=SIZE_STYLE[cls][1], edgecolor="white", linewidth=0.5,
+               label=lab)
+        bottom += v
+    for xi, tot in zip(x, pc["total"].to_numpy(float)):
+        ax.text(xi, tot + 0.025 * pc["total"].max(), "%d" % tot, ha="center",
+                va="bottom", fontsize=6.4, fontweight="bold", color="#222222")
     ax.set_xticks(x)
-    ax.set_xticklabels(pc.index)
-    ax.set_xlabel("probes per region")
-    ax.set_ylabel("regions")
-    ax.set_ylim(0, float(np.max(pc.to_numpy())) * 1.32)   # headroom for the legend
-    blank = mpl.lines.Line2D([], [], linestyle="none")
-    h, lab = ax.get_legend_handles_labels()
-    ax.legend(h + [blank], lab + ["minimum region size = %d probes" % min_probes],
-              frameon=False, fontsize=6.2, loc="upper right", borderaxespad=0.1,
-              handlelength=1.6, handletextpad=0.6)
+    ax.set_xticklabels([str(i).replace("bumphunter ", "bumphunter\n")
+                        .replace("co-methylation ", "co-methylation\n")
+                        for i in pc.index], fontsize=6.2)
+    ax.set_ylabel("regions called")
+    ax.set_ylim(0, float(pc["total"].max()) * 1.34)
+    ax.legend(frameon=False, fontsize=6.2, loc="upper left", borderaxespad=0.1,
+              handlelength=1.5, handletextpad=0.6, labelspacing=0.35)
 
 
-def panel_d(axes, d_bh, d_tv, stats):
-    for ax, (name, d, colour, marker) in zip(
-            axes, [("bumphunter", d_bh, BH_C, BH_M),
-                   ("distance-aware segmentation", d_tv, TV_C, TV_M)]):
+def panel_d(axes, data, stats):
+    for ax, (name, colour, marker) in zip(
+            axes, [(PANEL_D_KEYS[0], BH_C, BH_M), (PANEL_D_KEYS[1], TV_C, TV_M)]):
+        d = data[name]
         a = d.effect_450K_common.to_numpy()
         b = d.effect_EPIC_common.to_numpy()
         ok = np.isfinite(a) & np.isfinite(b)
         ax.axhline(0, color="#bbbbbb", linewidth=0.6, zorder=1)
         ax.axvline(0, color="#bbbbbb", linewidth=0.6, zorder=1)
-        ax.scatter(a[ok], b[ok], s=7, facecolor=colour, edgecolor="none",
+        ax.scatter(a[ok], b[ok], s=9, facecolor=colour, edgecolor="none",
                    marker=marker, alpha=0.75, zorder=3)
         s = stats[name]
-        ax.set_title("%s\nr = %.3f, n = %d\nsign concordance %.1f%%"
-                     % (name.replace(" segmentation", "\nsegmentation"),
-                        s["r"], s["n"], 100 * s["sign"]),
-                     loc="left", fontsize=6.2, color="#222222", linespacing=1.5, pad=3.5)
+        ax.set_title("%s\nn = %d, r = %.3f\nsign concordance %.1f%%"
+                     % (name.replace("co-methylation ", "co-methylation\n"),
+                        s["n"], s["r"], 100 * s["sign"]),
+                     loc="left", fontsize=6.2, color="#222222", linespacing=1.5,
+                     pad=3.5)
         lim = 0.42
         ax.set_xlim(-lim, lim)
         ax.set_ylim(-lim, lim)
@@ -179,11 +190,11 @@ def gap_vectors(d):
 def main(d):
     summary = pd.read_csv(os.path.join(d, "spacing_baseline.csv"))
     gaps = gap_vectors(d)
-    pc = pd.read_csv(os.path.join(d, "panelC_probes_per_region.csv"), index_col=0)
-    d_bh = pd.read_csv(os.path.join(d, "panelD_bumphunter.csv"))
-    d_tv = pd.read_csv(os.path.join(d, "panelD_distance-aware.csv"))
-    stats = {}
-    for name, dd in [("bumphunter", d_bh), ("distance-aware segmentation", d_tv)]:
+    pc = pd.read_csv(os.path.join(d, "panelC_region_size.csv"), index_col=0)
+    data, stats = {}, {}
+    for name in PANEL_D_KEYS:
+        dd = pd.read_csv(os.path.join(d, "panelD_%s.csv" % name.replace(" ", "_")))
+        data[name] = dd
         a, b = dd.effect_450K_common.to_numpy(), dd.effect_EPIC_common.to_numpy()
         ok = np.isfinite(a) & np.isfinite(b)
         stats[name] = dict(n=int(ok.sum()),
@@ -203,8 +214,8 @@ def main(d):
 
     panel_a(ax_a)
     panel_b(ax_b, gaps, summary)
-    panel_c(ax_c, pc, min_probes=MIN_PROBES)
-    panel_d([ax_d1, ax_d2], d_bh, d_tv, stats)
+    panel_c(ax_c, pc)
+    panel_d([ax_d1, ax_d2], data, stats)
 
     for ax, letter in [(ax_a, "A"), (ax_b, "B"), (ax_c, "C"), (ax_d1, "D")]:
         ax.text(-0.02 if ax is ax_a else -0.16, 1.06, letter, transform=ax.transAxes,

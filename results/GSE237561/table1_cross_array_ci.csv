@@ -1,0 +1,5 @@
+method,setting,region_set,n_regions,median_width_bp,median_probes_per_region,cross_array_r_common,r_ci_lo,r_ci_hi,n_same_sign,sign_concordance_common,sign_ci_lo,sign_ci_hi
+bumphunter,300 bp,regions with >=3 probes,27,165.0,4.0,0.3529,-0.0313,0.6463,20,0.7407,0.5532,0.8683
+bumphunter,500 bp,regions with >=3 probes,35,186.0,4.0,0.4636,0.1542,0.6902,28,0.8,0.6411,0.8996
+bumphunter,1000 bp,regions with >=3 probes,42,235.5,3.5,0.5811,0.3367,0.7522,38,0.9048,0.7793,0.9623
+co-methylation segmentation,min 3 probes,regions with >=3 probes,207,84.0,3.0,0.388,0.2657,0.498,170,0.8213,0.7634,0.8674

@@ -1,0 +1,21 @@
+[12:34:42] reading 92 450K samples
+[12:36:03] reading 34 EPIC samples
+[12:38:27] samples failing QC: 0; sex mismatches: 0
+[12:38:27] noob on 450K
+[12:39:12] noob on EPIC
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19489250 1040.9   36664414  1958.1         NA   22359656  1194.2
+Vcells 496271094 3786.3 1355404552 10341.0      16384 1355404552 10341.0
+[12:39:41] combineArrays -> virtual 450K probe space
+[convertArray] Casting as IlluminaHumanMethylation450k
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19494474 1041.2   36664414  1958.1         NA   22359656  1194.2
+Vcells 462107259 3525.6 1355404552 10341.0      16384 1355404552 10341.0
+            used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)
+Ncells  19495827 1041.2   36664414  1958.1         NA   22359656  1194.2
+Vcells 520038289 3967.6 1355404552 10341.0      16384 1355404552 10341.0
+[12:39:47] combined: 452567 probes x 126 samples
+[12:39:49] after filtering: 422898 probes
+[12:40:59] wrote harmonised.rds: 422898 probes x 126 samples
+      406.83 real       331.71 user        52.76 sys
+time: sysctl kern.clockrate: Operation not permitted

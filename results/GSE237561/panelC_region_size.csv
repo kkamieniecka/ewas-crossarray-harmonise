@@ -1,0 +1,5 @@
+,1 probe,2 probes,>=3 probes,total
+bumphunter 300 bp,157,30,27,214
+bumphunter 500 bp,247,55,35,337
+bumphunter 1000 bp,400,90,42,532
+co-methylation segmentation,0,0,207,207

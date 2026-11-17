@@ -35,6 +35,7 @@ measured rather than asserted.
 | [`docs/stage07-group-definition.md`](docs/stage07-group-definition.md) | what the gap partition is, and why it is not the beta-threshold classes |
 | [`docs/equivalence-4000-probes.md`](docs/equivalence-4000-probes.md) | the R and Python cores compared on the seeded fixture, and what that does and does not establish |
 | [`docs/regenerating-harmonised-matrix.md`](docs/regenerating-harmonised-matrix.md) | rebuilding `harmonised.rds` from the IDATs: recorded parameters, requirements, measured timings |
+| [`docs/rebuild-and-maxgap.md`](docs/rebuild-and-maxgap.md) | the rebuild as performed and verified, and bumphunter at maxGap 300, 500 and 1000 with 95% intervals |
 | [`CHANGELOG.md`](CHANGELOG.md) | version history and known limitations |
 
 ## The design constraint that drives everything

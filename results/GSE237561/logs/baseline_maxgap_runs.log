@@ -1,0 +1,42 @@
+[  13.6s] baseline universe: 422898 autosomal probes x 126 samples
+[  13.7s] design: ~ expo + smoking_score + cd8t + cd4t + bcell + gran + mono + nk   ->  9 columns, rank 9
+[  13.7s] clusterMaker(maxGap=300): 220883 clusters; median probes/cluster = 1
+[  14.0s] bumphunter, B=200 (free permutation of the exposure column)
+[bumphunterEngine] The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+Loading required package: rngtools
+Warning message:
+In bumphunterEngine(object, design = design, chr = chr, pos, cluster = cluster,  :
+  The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+[ 193.7s] bumphunter regions: 214; at fwer<=0.05: 0
+[ 196.3s] per-array fit 450K: n=92
+[ 198.3s] per-array fit EPIC: n=34
+[ 199.3s] cross-array region effects: r=0.38, sign concordance=67.3%
+[ 199.3s] done
+[  14.5s] baseline universe: 422898 autosomal probes x 126 samples
+[  14.6s] design: ~ expo + smoking_score + cd8t + cd4t + bcell + gran + mono + nk   ->  9 columns, rank 9
+[  14.6s] clusterMaker(maxGap=500): 186782 clusters; median probes/cluster = 1
+[  14.9s] bumphunter, B=200 (free permutation of the exposure column)
+[bumphunterEngine] The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+Loading required package: rngtools
+Warning message:
+In bumphunterEngine(object, design = design, chr = chr, pos, cluster = cluster,  :
+  The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+[ 247.1s] bumphunter regions: 337; at fwer<=0.05: 0
+[ 248.9s] per-array fit 450K: n=92
+[ 249.6s] per-array fit EPIC: n=34
+[ 250.9s] cross-array region effects: r=0.429, sign concordance=73.3%
+[ 250.9s] done
+[  12.8s] baseline universe: 422898 autosomal probes x 126 samples
+[  12.8s] design: ~ expo + smoking_score + cd8t + cd4t + bcell + gran + mono + nk   ->  9 columns, rank 9
+[  12.9s] clusterMaker(maxGap=1000): 153440 clusters; median probes/cluster = 1
+[  13.2s] bumphunter, B=200 (free permutation of the exposure column)
+[bumphunterEngine] The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+Loading required package: rngtools
+Warning message:
+In bumphunterEngine(object, design = design, chr = chr, pos, cluster = cluster,  :
+  The use of the permutation test is not recommended with multiple covariates, (ncol(design)>2). Consider changing 'nullMethod' changed to 'bootstrap' instead. See vignette for more information.
+[ 254.3s] bumphunter regions: 532; at fwer<=0.05: 0
+[ 255.6s] per-array fit 450K: n=92
+[ 256.6s] per-array fit EPIC: n=34
+[ 258.6s] cross-array region effects: r=0.438, sign concordance=72.2%
+[ 258.6s] done
